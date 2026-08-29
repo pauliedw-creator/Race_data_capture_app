@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#12100E">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -200,10 +199,17 @@ hr{border:none;border-top:1px solid var(--line);margin:18px 0}
 details{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:10px 0}
 summary{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;cursor:pointer}
 pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:11px;color:var(--muted)}
+
+.portions{flex:1 1 100%;margin:-2px 0 4px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:var(--r);background:var(--panel-2)}
+.portions .plabel{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:600}
+.editbar{background:var(--sel-bg);border:1px solid var(--amber);color:var(--amber);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:650;text-align:center}
+.pnote{font-size:14px;margin:0 0 8px;padding-left:10px;border-left:2px solid var(--amber-dim);color:var(--text)}
+.pnote:last-child{margin-bottom:0}
+.bar{height:5px;background:var(--panel-2);border-radius:3px;overflow:hidden;margin:2px 0 10px}
+.bar i{display:block;height:100%;border-radius:3px}
 :focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-</style>
-</head>
+</style></head>
 <body>
 
 <header>
@@ -217,18 +223,38 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 <main id="view"></main>
 
 <nav>
-  <button data-tab="lap"  aria-current="true"><span class="n">◉</span>Lap</button>
+  <button data-tab="lap" aria-current="true"><span class="n">◉</span>Lap</button>
   <button data-tab="log"><span class="n">≡</span>Log</button>
   <button data-tab="out"><span class="n">↥</span>Export</button>
   <button data-tab="set"><span class="n">⚙</span>Setup</button>
 </nav>
 
 <div class="toast" id="toast"></div>
-
 <script>
 "use strict";
-const APP_VERSION = "1.2.0";
+const APP_VERSION = "2.0.0";
 
+/* ============================================================
+   RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx,
+   Plan sheet. Baked into the code so it travels with the app to any
+   device. c = chips [productId, portion]; t = per-lap targets;
+   n = notes from the plan; d = cumulative miles.
+   ============================================================ */
+const RACE_PLAN = {"1":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["BELL 10:00. Target 51 min - do NOT chase 45. POWER-HIKE the 0.8km hill from THIS lap.","Calf sleeves or long socks ON from the start - vegetation protection"],"d":4.2},"2":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":["Portaloos are ON the loop at the car park, ~5.5km (4/5 round). Use them - do not hold on to camp."],"d":8.3},"3":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["Warm up lube"],"d":12.5},"4":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Warmest laps 4-8. Sip plain water at camp if thirsty - do not add to bottle."],"d":16.6},"5":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":[],"d":20.8},"6":{"c":[["gel",1],["muller",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":570,"carb":81},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)"],"d":25.0},"7":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":[],"d":29.1},"8":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Quick-charge watch + lamp"],"d":33.3},"9":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["Warm up lube","LAYER UP BEFORE DARK - core warmth is a fuelling issue, not comfort."],"d":37.4},"10":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":[],"d":41.6},"11":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["HEADLAMP ON. WALK the rooted descent at 1.5-1.95km from now until daylight."],"d":45.8},"12":{"c":[["gel",1],["turkish",1],["skratch",1]],"t":{"kcal":292,"ml":500,"na":420,"carb":73},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes) | FULL DRY-OUT: socks off, dry, re-lube, check tape, inspect ankles for abrasion","Night 1 begins. Cold suppresses thirst: finish the bottle anyway."],"d":49.9},"13":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Kendal Mint Cake/Turkish Delight on odd laps: calories without extra fluid in the cold."],"d":54.1},"14":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":[],"d":58.3},"15":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["Warm up lube"],"d":62.4},"16":{"c":[["gel",1],["richtea",1.5],["skratch",1]],"t":{"kcal":333,"ml":500,"na":420,"carb":69},"n":["Quick-charge watch + lamp","Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":66.6},"17":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":["Caffeine chew 80mg (AFTER any nap, not before) | Circadian trough 02:00-05:00. Her first hard lap has historically been ~hr 17."],"d":70.7},"18":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)"],"d":74.9},"19":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Caffeine chew 80mg (AFTER any nap, not before)"],"d":79.1},"20":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":83.2},"21":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["HEADLAMP OFF - daylight. Rooted descent runnable again.","Warm up lube"],"d":87.4},"22":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":[],"d":91.5},"23":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":[],"d":95.7},"24":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Quick-charge watch + lamp | Swap to 2nd headlamp battery set","FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes) | FULL DRY-OUT: socks off, dry, re-lube, check tape, inspect ankles for abrasion","DECISION POINT: hrs 24-26 is her documented crisis window. Company on this lap."],"d":99.9},"25":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["Coke joins odd laps from here = the proven Sherwood liquid protocol. New taste on purpose."],"d":104.0},"26":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":[],"d":108.2},"27":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["Warm up lube"],"d":112.3},"28":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":[],"d":116.5},"29":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":[],"d":120.7},"30":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)","Past all but one race in the dataset. Everything from here is new ground."],"d":124.8},"31":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["NAP WINDOW OPENS: if lap comes in under 53 min, 5 min eyes-shut in the chair."],"d":129.0},"32":{"c":[["gel",1],["turkish",1],["skratch",1]],"t":{"kcal":292,"ml":500,"na":420,"carb":73},"n":["Quick-charge watch + lamp"],"d":133.2},"33":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["Warm up lube","LAYER UP BEFORE DARK (night 2)."],"d":137.3},"34":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":[],"d":141.5},"35":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["HEADLAMP ON (night 2) - fresh lamp + charged spare. WALK the rooted descent."],"d":145.6},"36":{"c":[["gel",1],["richtea",1.5],["skratch",1]],"t":{"kcal":333,"ml":500,"na":420,"carb":69},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes) | FULL DRY-OUT: socks off, dry, re-lube, check tape, inspect ankles for abrasion","Longest she has ever been on feet was 30 hrs. Crew script: one lap at a time only. | Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":149.8},"37":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":[],"d":154.0},"38":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":[],"d":158.1},"39":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Warm up lube","NAP: 5 min, timer set by Paul, no negotiation on getting up. WALK the roots after any nap."],"d":162.3},"40":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Quick-charge watch + lamp","Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":166.4},"41":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":["Caffeine chew 80mg (AFTER any nap, not before)"],"d":170.6},"42":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)"],"d":174.8},"43":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Caffeine chew 80mg (AFTER any nap, not before) | NAP: 5 min. Micro-sleep risk while moving - walk the rooted descent AND the steps at 4.2km."],"d":178.9},"44":{"c":[["gel",1],["richtea",1.5],["skratch",1]],"t":{"kcal":333,"ml":500,"na":420,"carb":69},"n":["Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":183.1},"45":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":["HEADLAMP OFF - daylight","Warm up lube"],"d":187.2},"46":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Final 3. Daylight, caffeine available, tell her the number."],"d":191.4},"47":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":[],"d":195.6},"48":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":["Quick-charge watch + lamp","FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)","199.7 miles. Bell 09:00, in the corral by 09:00 sharp."],"d":199.7}};
+const RACE_META = {
+  name: "Rasselbock Backyard — Hardwick Hall",
+  date: "2026-09-05",
+  defaultStart: "10:00",
+  laps: 48,
+  lapMiles: 4.161,
+  planVersion: "v3"
+};
+function planFor(n){ return RACE_PLAN[n] || null; }
+function plannedChips(n){ const p=planFor(n); return p ? p.c.map(x=>x[0]) : []; }
+function plannedQty(n,id){ const p=planFor(n); if(!p) return 1; const f=p.c.find(x=>x[0]===id); return f?f[1]:1; }
+function planTarget(n){ return (planFor(n)||{t:{kcal:0,carb:0,na:0,ml:0}}).t; }
+
+/* ---- theme ---- */
 function applyTheme(){
   const pick = (S && S.settings && S.settings.theme) || "dark";
   const eff = pick==="auto"
@@ -243,150 +269,103 @@ try{
     .addEventListener("change",()=>{ if(S.settings.theme==="auto") applyTheme(); });
 }catch(e){}
 
-/* Ask the browser never to evict our data. Android Chrome grants this
-   for installed apps. Failure is non-fatal. */
+/* ---- persistent storage + service worker ---- */
 (async()=>{ try{ if(navigator.storage&&navigator.storage.persist) await navigator.storage.persist(); }catch(e){} })();
-
-/* Service worker: cache-first, pinned. It will NOT update itself mid-race —
-   updating is a deliberate act on the Setup tab. */
 let swReg=null;
 if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"})
-    .then(r=>{ swReg=r; })
-    .catch(()=>{});
+  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>{swReg=r;}).catch(()=>{});
 }
 
 /* ============================================================
-   STORAGE — localStorage primary, IndexedDB mirror, both optional.
-   Nothing here is allowed to throw. If both fail the app still
-   runs in memory and the Export tab is the record.
+   STORAGE
    ============================================================ */
-const KEY = "backyard-lap-log-v1";
+const KEY = "backyard-lap-log-v2";
 let persistOK = false;
-
-function lsSave(obj){
-  try{ localStorage.setItem(KEY, JSON.stringify(obj)); return true; }
-  catch(e){ return false; }
-}
-function lsLoad(){
-  try{ const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; }
-  catch(e){ return null; }
-}
+function lsSave(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return true; }catch(e){ return false; } }
+function lsLoad(){ try{ const r=localStorage.getItem(KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
 let idb=null;
-(function openIDB(){
-  try{
-    const rq = indexedDB.open("backyardLapLog",1);
-    rq.onupgradeneeded = e => { e.target.result.createObjectStore("kv"); };
-    rq.onsuccess = e => { idb = e.target.result; };
-    rq.onerror = () => { idb=null; };
-  }catch(e){ idb=null; }
-})();
-function idbSave(obj){
-  try{
-    if(!idb) return;
-    const tx = idb.transaction("kv","readwrite");
-    tx.objectStore("kv").put(JSON.stringify(obj), KEY);
-  }catch(e){}
-}
+(function(){ try{
+  const rq=indexedDB.open("backyardLapLog",1);
+  rq.onupgradeneeded=e=>{ e.target.result.createObjectStore("kv"); };
+  rq.onsuccess=e=>{ idb=e.target.result; };
+  rq.onerror=()=>{ idb=null; };
+}catch(e){ idb=null; } })();
+function idbSave(o){ try{ if(!idb) return; idb.transaction("kv","readwrite").objectStore("kv").put(JSON.stringify(o),KEY); }catch(e){} }
 
 /* ============================================================
-   PRODUCT LIBRARY
-   Values traced to the project product library. Anything the
-   library does not state is marked est:true and flagged on export
-   so estimated numbers never pass silently into the record.
+   PRODUCTS
    ============================================================ */
 const DEFAULT_PRODUCTS = [
-  // drinks (fluid-bearing) --------------------------------------------------
-  {id:"tailwind",   name:"Tailwind",        note:"2 scoops / 500ml",  kcal:200, carb:50, na:600, caf:0,  ml:500, drink:true},
-  {id:"tailwindC",  name:"Tailwind caff",   note:"2 scoops / 500ml",  kcal:200, carb:50, na:600, caf:70, ml:500, drink:true},
-  {id:"skratch",    name:"Skratch",         note:"1 scoop / 500ml",   kcal:80,  carb:21, na:380, caf:0,  ml:500, drink:true},
-  {id:"barefuel",   name:"BareFuel",        note:"VALUES NOT SET",    kcal:0,   carb:0,  na:0,   caf:0,  ml:500, drink:true, unset:true},
-  {id:"water",      name:"Water",           note:"500ml",             kcal:0,   carb:0,  na:0,   caf:0,  ml:500, drink:true},
-  {id:"coke",       name:"Coke",            note:"200ml",             kcal:84,  carb:21, na:20,  caf:19, ml:200, drink:true},
-  // solids ------------------------------------------------------------------
-  {id:"gel",        name:"Gel",             note:"Active Root",       kcal:124, carb:30, na:40,  caf:0,  ml:0},
-  {id:"digestive",  name:"Choc digestives", note:"x2",                kcal:170, carb:22, na:90,  caf:0,  ml:0},
-  {id:"banana",     name:"Banana",          note:"",                  kcal:105, carb:27, na:1,   caf:0,  ml:0},
-  {id:"muller",     name:"Müller Rice",     note:"lap 6 only",        kcal:180, carb:30, na:150, caf:0,  ml:0, est:true},
-  {id:"kendal",     name:"Kendal mint",     note:"half bar 20g",      kcal:80,  carb:17, na:0,   caf:0,  ml:0, est:true},
-  {id:"turkish",    name:"Turkish delight", note:"3 cubes",           kcal:88,  carb:22, na:0,   caf:0,  ml:0, est:true},
-  {id:"richtea",    name:"Rich tea",        note:"x2",                kcal:86,  carb:12, na:0,   caf:0,  ml:0},
-  {id:"soup",       name:"Soup + bread",    note:"camp",              kcal:150, carb:16, na:500, caf:0,  ml:150, est:true},
-  {id:"chew",       name:"Caffeine chew",   note:"Brain Bullet 80mg", kcal:0,   carb:0,  na:0,   caf:80, ml:0}
+  {id:"tailwind",  name:"Tailwind",        note:"2 scoops / 500ml", kcal:200, carb:50, na:600, caf:0,  ml:500, drink:true},
+  {id:"tailwindC", name:"Tailwind caff",   note:"2 scoops / 500ml", kcal:200, carb:50, na:600, caf:70, ml:500, drink:true},
+  {id:"skratch",   name:"Skratch",         note:"1 scoop / 500ml",  kcal:80,  carb:21, na:380, caf:0,  ml:500, drink:true},
+  {id:"barefuel",  name:"BareFuel",        note:"VALUES NOT SET",   kcal:0,   carb:0,  na:0,   caf:0,  ml:500, drink:true, unset:true},
+  {id:"water",     name:"Water",           note:"500ml",            kcal:0,   carb:0,  na:0,   caf:0,  ml:500, drink:true},
+  {id:"tea",       name:"Tea",             note:"camp mug",         kcal:20,  carb:3,  na:10,  caf:40, ml:250, drink:true, est:true},
+  {id:"coke",      name:"Coke",            note:"200ml",            kcal:84,  carb:21, na:20,  caf:19, ml:200, drink:true},
+  {id:"gel",       name:"Gel",             note:"Active Root",      kcal:124, carb:30, na:40,  caf:0,  ml:0},
+  {id:"digestive", name:"Choc digestives", note:"x2",               kcal:170, carb:22, na:90,  caf:0,  ml:0},
+  {id:"banana",    name:"Banana",          note:"1",                kcal:105, carb:27, na:1,   caf:0,  ml:0},
+  {id:"muller",    name:"Müller Rice",     note:"1 pot",            kcal:180, carb:30, na:150, caf:0,  ml:0, est:true},
+  {id:"kendal",    name:"Kendal mint",     note:"half bar 20g",     kcal:80,  carb:17, na:0,   caf:0,  ml:0, est:true},
+  {id:"turkish",   name:"Turkish delight", note:"3 cubes",          kcal:88,  carb:22, na:0,   caf:0,  ml:0, est:true},
+  {id:"richtea",   name:"Rich tea",        note:"x2",               kcal:86,  carb:12, na:0,   caf:0,  ml:0},
+  {id:"soup",      name:"Soup + bread",    note:"camp",             kcal:150, carb:16, na:500, caf:0,  ml:150, est:true},
+  {id:"chew",      name:"Caffeine chew",   note:"Brain Bullet 80mg",kcal:0,   carb:0,  na:0,   caf:80, ml:0}
 ];
 
-const AMOUNTS = [
-  {k:"none", label:"None",  f:0},
-  {k:"lit",  label:"Little",f:.25},
-  {k:"half", label:"Half",  f:.5},
-  {k:"most", label:"Most",  f:.75},
-  {k:"all",  label:"All",   f:1}
-];
-const SYMPTOMS = ["Bloating","Urgency","Nausea","Stomach cramp","Muscle cramp","Heat","Cold","Dizzy","Sleepy"];
+const AMOUNTS  = [{k:"none",label:"None",f:0},{k:"lit",label:"Little",f:.25},{k:"half",label:"Half",f:.5},{k:"most",label:"Most",f:.75},{k:"all",label:"All",f:1}];
+const PORTIONS = [{q:0.25,l:"¼"},{q:0.5,l:"½"},{q:0.75,l:"¾"},{q:1,l:"1"},{q:1.5,l:"1½"},{q:2,l:"2"}];
+const SYMPTOMS = ["Bloating","Nausea","Stomach cramp","Muscle cramp","Heat","Cold","Dizzy","Sleepy"];
 const TOILET   = ["None","Wee","BM","Urgent BM"];
-const MAINT    = ["Lube","Feet","Socks","Charge"];
+const MAINT    = ["Lube","Feet check","Socks","Charge"];
 
 /* ============================================================
    STATE
    ============================================================ */
 const BLANK_SETTINGS = {
-  raceName:"Rasselbock Backyard — Hardwick Hall",
-  startTime:"", targetLaps:48, lapMiles:4.161,
-  syncUrl:"", syncSecret:"", planText:"", snapEvery:1, theme:"dark"
+  startTime: RACE_META.defaultStart,
+  targetLaps: RACE_META.laps,
+  lapMiles: RACE_META.lapMiles,
+  syncUrl:"", syncSecret:"", snapEvery:1, theme:"dark"
 };
 let S = lsLoad() || {
   settings:{...BLANK_SETTINGS},
-  products:DEFAULT_PRODUCTS,
-  laps:[],
-  cur:null,          // lap in progress in camp: {n, arrived, ...}
-  onsets:{},         // symptom -> {lap, ts}
-  nextLap:1,
-  tab:"lap"
+  products: DEFAULT_PRODUCTS,
+  raceStart: null,
+  laps: [], cur: null, editN: null,
+  onsets: {}, nextLap: 1, tab:"lap"
 };
-// forward-compat: fill any missing keys
 S.settings = {...BLANK_SETTINGS, ...(S.settings||{})};
-S.products = S.products && S.products.length ? S.products : DEFAULT_PRODUCTS;
-S.laps = S.laps||[]; S.onsets = S.onsets||{}; S.nextLap = S.nextLap||1;
+S.products = (S.products && S.products.length) ? S.products : DEFAULT_PRODUCTS;
+DEFAULT_PRODUCTS.forEach(d=>{ if(!S.products.find(p=>p.id===d.id)) S.products.push(d); });
+S.laps=S.laps||[]; S.onsets=S.onsets||{}; S.nextLap=S.nextLap||1;
+
+/* migrate v1 items (id -> 1|2) to v2 (id -> {s,q}) */
+(function migrate(){
+  const fix = l => {
+    if(!l||!l.items) return;
+    Object.keys(l.items).forEach(id=>{
+      const v=l.items[id];
+      if(typeof v==="number") l.items[id]={s:v,q:1};
+    });
+    if(l.urine!==undefined) delete l.urine;
+    if(l.maint) l.maint=l.maint.map(m=>m==="Feet"?"Feet check":m);
+    if(l.symptoms) l.symptoms=l.symptoms.filter(x=>x!=="Urgency");
+  };
+  S.laps.forEach(fix); fix(S.cur);
+  delete S.onsets["Urgency"];
+})();
 
 let saveTimer=null;
 function save(){
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
-    const ok = lsSave(S);
-    persistOK = ok;
-    idbSave(S);
-    const b = document.getElementById("bSave");
-    b.textContent = ok ? "saved" : "no storage";
-    b.className = "badge " + (ok ? "on" : "off");
+  saveTimer=setTimeout(()=>{
+    persistOK = lsSave(S); idbSave(S);
+    const b=document.getElementById("bSave");
+    if(b){ b.textContent = persistOK?"saved":"no storage"; b.className="badge "+(persistOK?"on":"off"); }
   },120);
 }
-
-/* ============================================================
-   PLAN — pasted from the workbook.  One line per lap:
-     lap, drinkId, foodId, foodId, ...
-   Unknown names are kept as free text so nothing is silently lost.
-   ============================================================ */
-function parsePlan(txt){
-  const map={};
-  (txt||"").split(/\n/).forEach(line=>{
-    const parts = line.split(/[,|;]/).map(s=>s.trim()).filter(Boolean);
-    if(parts.length<2) return;
-    const n = parseInt(parts[0],10);
-    if(!n) return;
-    map[n] = parts.slice(1).map(resolveId).filter(Boolean);
-  });
-  return map;
-}
-function resolveId(token){
-  const t = token.toLowerCase().replace(/[^a-z]/g,"");
-  if(!t) return null;
-  const p = S.products.find(p=>p.id.toLowerCase()===t)
-        || S.products.find(p=>p.name.toLowerCase().replace(/[^a-z]/g,"")===t)
-        || S.products.find(p=>p.name.toLowerCase().replace(/[^a-z]/g,"").startsWith(t) && t.length>3);
-  return p ? p.id : null;
-}
-let PLAN = parsePlan(S.settings.planText);
-function plannedFor(n){ return PLAN[n] || []; }
 
 /* ============================================================
    HELPERS
@@ -395,140 +374,165 @@ const $ = s => document.querySelector(s);
 const now = () => Date.now();
 const hhmm = ts => ts ? new Date(ts).toTimeString().slice(0,5) : "";
 const hhmmss = ts => ts ? new Date(ts).toTimeString().slice(0,8) : "";
-function mmss(ms){
-  if(ms<0) ms=0;
-  const s = Math.floor(ms/1000);
-  return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");
-}
-function toast(msg){
-  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
-  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"),1800);
-}
-function prevLap(){ return S.laps.length ? S.laps[S.laps.length-1] : null; }
-function carried(field, fallback){
-  const p = prevLap();
-  return (p && p[field]!=null && p[field]!=="") ? p[field] : fallback;
-}
+const round = n => Math.round(n);
+function mmss(ms){ if(!(ms>=0)) return "––:––"; const s=Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
+function mins(ms){ return (ms==null||isNaN(ms)) ? "" : (ms/60000).toFixed(1); }
+function signed(n,unit){ return (n>=0?"+":"−")+Math.abs(round(n))+(unit||""); }
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),1900); }
 function prod(id){ return S.products.find(p=>p.id===id); }
+function prevLap(){ return S.laps.length ? S.laps[S.laps.length-1] : null; }
+function carried(f,fb){ const p=prevLap(); return (p && p[f]!=null && p[f]!=="") ? p[f] : fb; }
+
+/* Whistle times are fixed: every lap starts on the hour. */
+function whistle(n){ return S.raceStart ? S.raceStart + (n-1)*3600000 : null; }
+function lapRunMs(l){ const w=whistle(l.n); return (w&&l.arrived) ? l.arrived-w : null; }
+function bufferMs(l){ const w=whistle(l.n+1); return (w&&l.arrived) ? w-l.arrived : null; }
+function campMs(l){ return (l.arrived&&l.departed) ? l.departed-l.arrived : null; }
 
 function blankLap(n){
-  return {
-    n, arrived:null, departed:null,
-    drink:null, drinkAmt:"all",
-    items:{},          // id -> 1 taken | 2 refused
-    extra:[],          // free-typed items {name}
-    gut:null,
-    mood:carried("mood",null), legs:carried("legs",null),
-    urine:carried("urine",null), layers:carried("layers",null),
-    toilet:"None", symptoms:[], maint:[], notes:"",
-    newOnsets:[], synced:false
-  };
+  return { n, arrived:null, departed:null,
+    drink:null, drinkAmt:"all", drink2:null, drink2Amt:"all",
+    items:{}, extra:[], gut:null,
+    mood:carried("mood",null), legs:carried("legs",null), layers:carried("layers",null),
+    toilet:"None", symptoms:[], symOther:"", maint:[], notes:"",
+    newOnsets:[], swell:null, synced:false };
 }
 
-/* totals from tapped chips + drink amount */
+/* the lap currently on screen: either the live one or one opened from the log */
+function activeLap(){
+  if(S.editN!=null) return S.laps.find(l=>l.n===S.editN)||null;
+  return S.cur;
+}
+const isEditing = () => S.editN!=null;
+
 function totals(l){
-  let t={kcal:0,carb:0,na:0,caf:0,ml:0,est:false,unset:false};
-  if(l.drink){
-    const p = prod(l.drink);
-    const f = (AMOUNTS.find(a=>a.k===l.drinkAmt)||{f:1}).f;
-    if(p){
-      t.kcal+=p.kcal*f; t.carb+=p.carb*f; t.na+=p.na*f; t.caf+=p.caf*f; t.ml+=p.ml*f;
-      if(p.est) t.est=true; if(p.unset) t.unset=true;
-    }
-  }
+  const t={kcal:0,carb:0,na:0,caf:0,ml:0,est:false,unset:false};
+  const addDrink=(id,amt)=>{
+    if(!id) return; const p=prod(id); if(!p) return;
+    const f=(AMOUNTS.find(a=>a.k===amt)||{f:1}).f;
+    t.kcal+=p.kcal*f; t.carb+=p.carb*f; t.na+=p.na*f; t.caf+=p.caf*f; t.ml+=p.ml*f;
+    if(p.est)t.est=true; if(p.unset)t.unset=true;
+  };
+  addDrink(l.drink,l.drinkAmt); addDrink(l.drink2,l.drink2Amt);
   Object.keys(l.items||{}).forEach(id=>{
-    if(l.items[id]!==1) return;
-    const p = prod(id); if(!p) return;
-    t.kcal+=p.kcal; t.carb+=p.carb; t.na+=p.na; t.caf+=p.caf; t.ml+=p.ml;
-    if(p.est) t.est=true; if(p.unset) t.unset=true;
+    const e=l.items[id]; if(!e||e.s!==1) return;
+    const p=prod(id); if(!p) return;
+    const q=e.q==null?1:e.q;
+    t.kcal+=p.kcal*q; t.carb+=p.carb*q; t.na+=p.na*q; t.caf+=p.caf*q; t.ml+=p.ml*q;
+    if(p.est)t.est=true; if(p.unset)t.unset=true;
   });
   if((l.extra||[]).length) t.est=true;
   return t;
 }
-function round(n){ return Math.round(n); }
+function cumulative(){
+  const a={kcal:0,carb:0,na:0,ml:0}, p={kcal:0,carb:0,na:0,ml:0};
+  S.laps.forEach(l=>{
+    const t=totals(l); a.kcal+=t.kcal; a.carb+=t.carb; a.na+=t.na; a.ml+=t.ml;
+    const q=planTarget(l.n); p.kcal+=q.kcal; p.carb+=q.carb; p.na+=q.na; p.ml+=q.ml;
+  });
+  return {a,p,n:S.laps.length};
+}
 
 /* ============================================================
    RENDER
    ============================================================ */
+let lastTab=null, lastKey=null;
 function render(){
-  document.querySelectorAll("nav button").forEach(b=>
-    b.setAttribute("aria-current", b.dataset.tab===S.tab ? "true":"false"));
-  const lapN = S.cur ? S.cur.n : S.nextLap;
-  $("#hLap").textContent = lapN;
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===S.tab?"true":"false"));
+  const L=activeLap();
+  $("#hLap").textContent = L ? L.n : S.nextLap;
   $("#hOf").textContent = "/ " + S.settings.targetLaps;
-  const v = $("#view");
-  // Keep the page where the thumb left it. Only jump to the top when the
-  // tab actually changes — re-rendering after a tap must not move anything.
-  const y = window.scrollY;
-  const tabChanged = (S.tab !== lastTab);
-  const active = document.activeElement;
-  const focusKey = active && active.id ? active.id : null;
-  const caret = (active && "selectionStart" in active) ? active.selectionStart : null;
 
-  v.innerHTML = ({lap:viewLap, log:viewLog, out:viewOut, set:viewSet})[S.tab]();
+  const v=$("#view");
+  const key = S.tab + ":" + (S.editN!=null?("e"+S.editN):(S.cur?"c":"-"));
+  const y=window.scrollY, jump=(key!==lastKey);
+  const act=document.activeElement, fid=act&&act.id?act.id:null;
+  const caret=(act&&"selectionStart" in act)?act.selectionStart:null;
+
+  v.innerHTML = ({lap:viewLap,log:viewLog,out:viewOut,set:viewSet})[S.tab]();
   bind();
 
-  if(tabChanged){
-    lastTab = S.tab;
-    window.scrollTo(0,0);
-  }else{
+  if(jump){ lastKey=key; lastTab=S.tab; window.scrollTo(0,0); }
+  else{
     window.scrollTo(0,y);
-    if(focusKey){
-      const el = document.getElementById(focusKey);
-      if(el){
-        el.focus({preventScroll:true});
-        if(caret!=null && "setSelectionRange" in el){
-          try{ el.setSelectionRange(caret,caret); }catch(e){}
-        }
-      }
-    }
+    if(fid){ const el=document.getElementById(fid);
+      if(el){ el.focus({preventScroll:true});
+        if(caret!=null&&"setSelectionRange" in el){ try{ el.setSelectionRange(caret,caret); }catch(e){} } } }
   }
 }
-let lastTab = null;
 
 /* ---------- LAP ---------- */
 function viewLap(){
-  if(!S.cur) return idleScreen();
-  const l = S.cur;
-  const planned = plannedFor(l.n);
-  const drinks = S.products.filter(p=>p.drink);
-  const foods  = S.products.filter(p=>!p.drink);
-  const t = totals(l);
+  const l=activeLap();
+  if(!l) return idleScreen();
+  const ed=isEditing();
+  const planned=plannedChips(l.n);
+  const pnotes=(planFor(l.n)||{n:[]}).n;
+  const drinks=S.products.filter(p=>p.drink);
+  const foods=S.products.filter(p=>!p.drink);
+  const t=totals(l), tgt=planTarget(l.n);
 
-  const chip = p => {
-    const st = l.items[p.id]||0;
-    const isPlan = planned.includes(p.id);
-    return `<button class="chip ${isPlan?"planned":""}" data-item="${p.id}" data-s="${st}">
-      ${p.name}<span class="sub">${st===2?"refused":(isPlan?"planned":(p.note||"&nbsp;"))}</span></button>`;
+  const dchips=(sel,attr)=>drinks.map(p=>
+    `<button class="chip ${planned.includes(p.id)?"planned":""}" data-${attr}="${p.id}" data-s="${sel===p.id?1:0}">${p.name}<span class="sub">${planned.includes(p.id)?"planned":(p.note||"&nbsp;")}</span></button>`).join("");
+
+  const foodChip=p=>{
+    const e=l.items[p.id]; const st=e?e.s:0; const q=e?(e.q==null?1:e.q):1;
+    const isPlan=planned.includes(p.id);
+    const lbl=st===2?"refused":(st===1?((PORTIONS.find(x=>x.q===q)||{l:q}).l+" portion"):(isPlan?"planned":(p.note||"&nbsp;")));
+    let html=`<button class="chip ${isPlan?"planned":""}" data-item="${p.id}" data-s="${st}">${p.name}<span class="sub">${lbl}</span></button>`;
+    if(st===1){
+      html+=`<div class="portions"><span class="plabel">How much</span><div class="seg sm">${
+        PORTIONS.map(x=>`<button data-portion="${p.id}" data-q="${x.q}" aria-pressed="${q===x.q}">${x.l}</button>`).join("")
+      }</div></div>`;
+    }
+    return html;
   };
 
   return `
+  ${ed?`<div class="editbar">Editing lap ${l.n} — changes save as you tap</div>`:""}
   <section>
-    <div class="clock live" id="clock">
+    <div class="clock ${ed?"":"live"}" id="clock">
       <div class="pulse"></div>
-      <div class="t mono" id="ct">00:00</div>
-      <div class="lbl">In camp</div>
-      <div class="sub">Arrived ${hhmm(l.arrived)} · lap ${l.n} of ${S.settings.targetLaps}</div>
+      <div class="t mono" id="ct">${ed?mmss(campMs(l)):"00:00"}</div>
+      <div class="lbl">${ed?"In camp":"In camp now"}</div>
+      <div class="sub">${S.raceStart?`Bell ${hhmm(whistle(l.n))} · lap took ${mins(lapRunMs(l))||"—"} min · ${bufferMs(l)!=null?`${mins(bufferMs(l))} min to next bell`:""}`:`No race start set — times can't be checked against the bell`}</div>
     </div>
     <div class="bigrow">
-      <button class="big ghost" id="undoIn">Undo arrival</button>
-      <button class="big primary" id="btnOut">Departed</button>
+      ${ed
+        ? `<button class="big ghost" id="delLap">Delete lap</button><button class="big primary" id="doneEdit">Done</button>`
+        : `<button class="big ghost" id="undoIn">Undo arrival</button><button class="big primary" id="btnOut">Departed</button>`}
     </div>
   </section>
 
   <section class="card">
-    <p class="eyebrow">Drink</p>
-    <div class="chips">
-      ${drinks.map(p=>`<button class="chip ${planned.includes(p.id)?"planned":""}" data-drink="${p.id}" data-s="${l.drink===p.id?1:0}">${p.name}<span class="sub">${planned.includes(p.id)?"planned":(p.note||"&nbsp;")}</span></button>`).join("")}
+    <p class="eyebrow">Times</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><label class="f" style="margin-top:0">Arrived</label><input type="time" id="tIn" step="60" value="${hhmm(l.arrived)}"></div>
+      <div><label class="f" style="margin-top:0">Departed</label><input type="time" id="tOut" step="60" value="${hhmm(l.departed)}"></div>
     </div>
+    <p class="legend">Missed a button? Type the real time. Everything downstream recalculates.</p>
+  </section>
+
+  ${pnotes.length?`<section class="card"><p class="eyebrow">Plan notes for this lap</p>${pnotes.map(n=>`<p class="pnote">${n}</p>`).join("")}</section>`:""}
+
+  <section class="card">
+    <p class="eyebrow">Bottle on course</p>
+    <div class="chips">${dchips(l.drink,"drink")}</div>
     <label class="f">How much went down</label>
     <div class="seg sm">${AMOUNTS.map(a=>`<button data-amt="${a.k}" aria-pressed="${l.drinkAmt===a.k}">${a.label}</button>`).join("")}</div>
   </section>
 
   <section class="card">
+    <p class="eyebrow">Drink in camp</p>
+    <div class="chips">${dchips(l.drink2,"drink2")}</div>
+    <label class="f">How much</label>
+    <div class="seg sm">${AMOUNTS.map(a=>`<button data-amt2="${a.k}" aria-pressed="${l.drink2Amt===a.k}">${a.label}</button>`).join("")}</div>
+  </section>
+
+  <section class="card">
     <p class="eyebrow">Food</p>
-    <div class="chips">${foods.map(chip).join("")}</div>
-    <p class="legend">Tap once = taken · twice = refused · three times = clear</p>
+    <div class="chips">${foods.map(foodChip).join("")}</div>
+    <p class="legend">Tap once = taken · twice = refused · three times = clear. Portion defaults to a whole one.</p>
     ${(l.extra||[]).length?`<div class="chips" style="margin-top:8px">${l.extra.map((x,i)=>`<button class="chip" data-s="1" data-extra="${i}">${x}<span class="sub">tap to remove</span></button>`).join("")}</div>`:""}
     <label class="f">Something else</label>
     <div style="display:flex;gap:8px">
@@ -538,13 +542,11 @@ function viewLap(){
   </section>
 
   <section class="card">
-    <p class="eyebrow">Gut <span style="color:var(--red)">·</span></p>
+    <p class="eyebrow">Gut</p>
     <div class="seg">${[1,2,3,4,5].map(i=>`<button data-rate="gut" data-v="${i}" aria-pressed="${l.gut===i}">${i}</button>`).join("")}</div>
     <p class="legend">1 = bad · 5 = no issues</p>
-
     <p class="eyebrow" style="margin-top:18px">Mood <span class="carry">carries over</span></p>
     <div class="seg tone">${[1,2,3,4,5].map(i=>`<button data-rate="mood" data-v="${i}" aria-pressed="${l.mood===i}">${i}</button>`).join("")}</div>
-
     <p class="eyebrow" style="margin-top:18px">Legs <span class="carry">carries over</span></p>
     <div class="seg tone">${[1,2,3,4,5].map(i=>`<button data-rate="legs" data-v="${i}" aria-pressed="${l.legs===i}">${i}</button>`).join("")}</div>
   </section>
@@ -552,246 +554,243 @@ function viewLap(){
   <section class="card">
     <p class="eyebrow">Symptoms</p>
     <div class="sym">${SYMPTOMS.map(s=>{
-      const on = l.symptoms.includes(s);
-      const isNew = l.newOnsets.includes(s);
+      const on=l.symptoms.includes(s), isNew=l.newOnsets.includes(s);
       return `<button data-sym="${s}" aria-pressed="${on}">${s}${isNew?'<span class="new">1st time</span>':''}</button>`;
     }).join("")}</div>
+    <label class="f">Other</label>
+    <input type="text" id="symOther" value="${(l.symOther||"").replace(/"/g,"&quot;")}" placeholder="anything not on the list">
     <p class="legend">First time each one is tapped, the lap and clock time are stamped permanently.</p>
   </section>
 
   <section class="card">
     <p class="eyebrow">Toilet</p>
     <div class="seg sm">${TOILET.map(x=>`<button data-toilet="${x}" aria-pressed="${l.toilet===x}">${x}</button>`).join("")}</div>
-
-    <p class="eyebrow" style="margin-top:18px">Urine colour <span class="carry">carries over</span></p>
-    <div class="seg sm">${[1,2,3,4,5,6,7,8].map(i=>`<button data-rate="urine" data-v="${i}" aria-pressed="${l.urine===i}">${i}</button>`).join("")}</div>
-    <p class="legend">1 = pale · 8 = very dark. 7–8 or none for hours → check on her.</p>
-
     <p class="eyebrow" style="margin-top:18px">Hands / fingers</p>
     <div class="seg sm">
-      <button data-swell="no"  aria-pressed="${l.swell==='no'}">Normal</button>
+      <button data-swell="no" aria-pressed="${l.swell==='no'}">Normal</button>
       <button data-swell="yes" aria-pressed="${l.swell==='yes'}">Swollen</button>
     </div>
   </section>
 
   <section class="card">
     <p class="eyebrow">Layers <span class="carry">carries over</span></p>
-    <div class="seg sm">
-      ${["Light","Mid","Warm","Full night"].map(x=>`<button data-rate="layers" data-v="${x}" aria-pressed="${l.layers===x}">${x}</button>`).join("")}
-    </div>
-
+    <div class="seg sm">${["Light","Mid","Warm","Full night"].map(x=>`<button data-rate="layers" data-v="${x}" aria-pressed="${l.layers===x}">${x}</button>`).join("")}</div>
     <p class="eyebrow" style="margin-top:18px">Maintenance done</p>
     <div class="seg sm">${MAINT.map(m=>`<button data-maint="${m}" aria-pressed="${l.maint.includes(m)}">${m}</button>`).join("")}</div>
-
     <label class="f">Notes</label>
-    <textarea id="notes" placeholder="anything the taps can't hold">${l.notes||""}</textarea>
+    <textarea id="notes" placeholder="anything the taps can't hold">${(l.notes||"").replace(/</g,"&lt;")}</textarea>
   </section>
 
   <section class="card">
-    <p class="eyebrow">This lap so far</p>
-    <div class="kv"><span>Energy</span><b class="mono">${round(t.kcal)} kcal</b></div>
-    <div class="kv"><span>Carb</span><b class="mono">${round(t.carb)} g</b></div>
-    <div class="kv"><span>Sodium</span><b class="mono">${round(t.na)} mg</b></div>
-    <div class="kv"><span>Fluid</span><b class="mono">${round(t.ml)} ml</b></div>
+    <p class="eyebrow">This lap · actual vs plan</p>
+    ${[["Energy","kcal",t.kcal,tgt.kcal," kcal"],["Carb","carb",t.carb,tgt.carb," g"],["Sodium","na",t.na,tgt.na," mg"],["Fluid","ml",t.ml,tgt.ml," ml"]]
+      .map(([lbl,k,act,pl,u])=>`<div class="kv"><span>${lbl}</span><b class="mono">${round(act)}${u} <span style="color:var(--muted);font-weight:400">/ ${pl}${u}</span> <span style="color:${act>=pl*0.9?"var(--green)":"var(--red)"}">${signed(act-pl)}</span></b></div>`).join("")}
     <div class="kv"><span>Caffeine</span><b class="mono">${round(t.caf)} mg</b></div>
     ${t.unset?`<div class="err">A product with no values set is in this lap. Totals are short. Fix it in Setup.</div>`:""}
     ${t.est?`<div class="warn">Includes estimated values — flagged in the export.</div>`:""}
   </section>
 
   <section>
-    <button class="big primary wide" id="btnOut2" style="width:100%">Departed — save lap ${l.n}</button>
-    <p class="hint">Nothing is lost if you tap this late. The clock keeps the real arrival time.</p>
-  </section>
-  `;
+    ${ed
+      ? `<button class="big primary wide" id="doneEdit2" style="width:100%">Done — back to log</button>`
+      : `<button class="big primary wide" id="btnOut2" style="width:100%">Departed — save lap ${l.n}</button>`}
+  </section>`;
 }
 
 function idleScreen(){
-  const p = prevLap();
-  const last = p ? `Lap ${p.n} saved · in ${hhmm(p.arrived)} · out ${hhmm(p.departed)} · ${mmss(p.departed-p.arrived)} in camp` : "No laps recorded yet.";
+  const p=prevLap(), c=cumulative();
+  const started=!!S.raceStart;
   return `
   <section>
     <div class="clock">
-      <div class="t mono">${p ? mmss(p.departed-p.arrived) : "––:––"}</div>
-      <div class="lbl">${p ? "Last turnaround" : "On course"}</div>
-      <div class="sub">${last}</div>
+      <div class="t mono">${p?mmss(campMs(p)):(started?"––:––":"—")}</div>
+      <div class="lbl">${p?"Last turnaround":(started?"On course":"Not started")}</div>
+      <div class="sub">${started
+        ? (p?`Lap ${p.n} · in ${hhmm(p.arrived)} · out ${hhmm(p.departed)} · next bell ${hhmm(whistle(S.nextLap))}`
+             :`Race started ${hhmm(S.raceStart)} · lap 1 bell has gone`)
+        : "Press start when the bell goes for lap 1"}</div>
     </div>
     <div class="bigrow">
-      <button class="big primary wide" id="btnIn">She's in — start lap ${S.nextLap}</button>
+      ${started
+        ? `<button class="big primary wide" id="btnIn">She's in — end lap ${S.nextLap}</button>`
+        : `<button class="big primary wide" id="btnStart">Start race — bell for lap 1</button>`}
     </div>
-    ${!S.settings.planText?`<div class="warn">No plan loaded. Chips will show the full library with nothing marked as planned. Paste the lap plan in Setup.</div>`:""}
-    ${!persistOK?`<div class="err">Storage is off — this looks like a preview. Nothing will survive a reload. Save the file to your phone and open it from there.</div>`:""}
+    ${!persistOK?`<div class="err">Storage is off — this looks like a preview. Nothing will survive a reload.</div>`:""}
   </section>
+
   <section class="card">
     <p class="eyebrow">Race</p>
-    <div class="kv"><span>Laps done</span><b class="mono">${S.laps.length} / ${S.settings.targetLaps}</b></div>
-    <div class="kv"><span>Distance</span><b class="mono">${(S.laps.length*S.settings.lapMiles).toFixed(1)} mi</b></div>
+    <div class="kv"><span>Laps done</span><b class="mono">${c.n} / ${S.settings.targetLaps}</b></div>
+    <div class="kv"><span>Distance</span><b class="mono">${(c.n*S.settings.lapMiles).toFixed(1)} mi</b></div>
     <div class="kv"><span>Median turnaround</span><b class="mono">${medianDown()}</b></div>
+    <div class="kv"><span>Median lap</span><b class="mono">${medianLap()}</b></div>
     <div class="kv"><span>Unsynced rows</span><b class="mono">${S.laps.filter(x=>!x.synced).length}</b></div>
   </section>
+
+  ${c.n?`<section class="card">
+    <p class="eyebrow">Cumulative · actual vs plan (${c.n} lap${c.n===1?"":"s"})</p>
+    ${[["Energy","kcal",c.a.kcal,c.p.kcal,"kcal"],["Carb","carb",c.a.carb,c.p.carb,"g"],["Sodium","na",c.a.na,c.p.na,"mg"],["Fluid","ml",c.a.ml,c.p.ml,"ml"]]
+      .map(([lbl,k,a,pl,u])=>{
+        const pct=pl?Math.round(a/pl*100):0;
+        const col=pct>=90?"var(--green)":(pct>=75?"var(--amber)":"var(--red)");
+        return `<div class="kv"><span>${lbl}</span><b class="mono">${round(a)} <span style="color:var(--muted);font-weight:400">/ ${round(pl)} ${u}</span> <span style="color:${col}">${pct}%</span></b></div>
+        <div class="bar"><i style="width:${Math.min(100,pct)}%;background:${col}"></i></div>`;
+      }).join("")}
+    <div class="kv" style="margin-top:6px"><span>Actual rate</span><b class="mono">${round(c.a.kcal/c.n)} kcal · ${round(c.a.carb/c.n)} g · ${round(c.a.na/c.n)} mg · ${round(c.a.ml/c.n)} ml per hr</b></div>
+    <p class="legend">Plan is ${round(c.p.kcal/c.n)} kcal · ${round(c.p.carb/c.n)} g carb · ${round(c.p.na/c.n)} mg Na · ${round(c.p.ml/c.n)} ml per hour.</p>
+  </section>`:""}
+
   <section>
     <button class="big wide" id="btnFlags" style="width:100%;color:var(--red);border-color:var(--alert-line)">Red flags — when to stop</button>
   </section>`;
 }
 function medianDown(){
-  const d = S.laps.filter(l=>l.departed&&l.arrived).map(l=>l.departed-l.arrived).sort((a,b)=>a-b);
-  if(!d.length) return "––:––";
-  return mmss(d[Math.floor(d.length/2)]);
+  const d=S.laps.map(campMs).filter(x=>x!=null).sort((a,b)=>a-b);
+  return d.length?mmss(d[Math.floor(d.length/2)]):"––:––";
+}
+function medianLap(){
+  const d=S.laps.map(lapRunMs).filter(x=>x!=null&&x>0).sort((a,b)=>a-b);
+  return d.length?mmss(d[Math.floor(d.length/2)]):"––:––";
 }
 
 /* ---------- LOG ---------- */
 function viewLog(){
-  if(!S.laps.length) return `<section class="card"><p class="eyebrow">Log</p><p>No laps yet. The first arrival starts the record.</p></section>`;
-  const rows = [...S.laps].reverse().map(l=>{
-    const t = totals(l);
-    const taken = Object.keys(l.items).filter(k=>l.items[k]===1).map(k=>(prod(k)||{}).name||k).concat(l.extra||[]);
-    const gutCol = l.gut==null?"var(--muted)":(l.gut<=2?"var(--red)":(l.gut===3?"var(--amber)":"var(--green)"));
+  if(!S.laps.length) return `<section class="card"><p class="eyebrow">Log</p><p>No laps yet.</p></section>`;
+  const rows=[...S.laps].sort((a,b)=>b.n-a.n).map(l=>{
+    const t=totals(l), tgt=planTarget(l.n);
+    const taken=Object.keys(l.items).filter(k=>l.items[k].s===1)
+      .map(k=>{ const q=l.items[k].q; const nm=(prod(k)||{}).name||k; return q===1?nm:`${nm} (${(PORTIONS.find(x=>x.q===q)||{l:q}).l})`; })
+      .concat(l.extra||[]);
+    const gc = l.gut==null?"var(--muted)":(l.gut<=2?"var(--red)":(l.gut===3?"var(--amber)":"var(--green)"));
+    const kd = t.kcal-tgt.kcal;
     return `<button class="laprow" data-open="${l.n}">
       <span class="n mono">${l.n}</span>
       <span class="m">
-        <span class="a"><span class="dot" style="background:${gutCol}"></span>${taken.length?taken.join(", "):"nothing logged"}</span>
-        <span class="b mono">${hhmm(l.arrived)}→${hhmm(l.departed)} · ${round(t.kcal)} kcal · ${round(t.na)} mg Na${l.symptoms.length?" · "+l.symptoms.join(", "):""}</span>
+        <span class="a"><span class="dot" style="background:${gc}"></span>${taken.length?taken.join(", "):"nothing logged"}</span>
+        <span class="b mono">${hhmm(l.arrived)}→${hhmm(l.departed)} · ${round(t.kcal)}/${tgt.kcal} kcal <span style="color:${kd>=-30?"var(--green)":"var(--red)"}">${signed(kd)}</span>${l.symptoms.length||l.symOther?" · "+l.symptoms.concat(l.symOther?[l.symOther]:[]).join(", "):""}</span>
       </span>
-      <span class="d mono">${mmss(l.departed-l.arrived)}</span>
+      <span class="d mono">${mmss(campMs(l))}</span>
     </button>`;
   }).join("");
-  const on = Object.keys(S.onsets);
+  const on=Object.keys(S.onsets);
   return `
   ${on.length?`<section class="card"><p class="eyebrow">Symptom onsets</p>
-    ${on.map(k=>`<div class="kv"><span>${k}</span><b class="mono">lap ${S.onsets[k].lap} · ${hhmm(S.onsets[k].ts)}</b></div>`).join("")}
-  </section>`:""}
+    ${on.map(k=>`<div class="kv"><span>${k}</span><b class="mono">lap ${S.onsets[k].lap} · ${hhmm(S.onsets[k].ts)}</b></div>`).join("")}</section>`:""}
   <section class="card" style="padding:2px 12px">${rows}</section>
-  <p class="hint" style="padding:0 4px">Tap a lap to reopen and correct it.</p>`;
+  <p class="hint" style="padding:0 4px">Tap any lap to open and amend it. The live lap is not affected.</p>`;
 }
 
-/* ---------- EXPORT ---------- */
-const COLS = ["lap","arrived","departed","downtime_min","drink","drink_amount","taken","refused","other",
-  "kcal","carb_g","sodium_mg","fluid_ml","caffeine_mg","gut","mood","legs","urine","layers","toilet",
-  "symptoms","new_onsets","maintenance","notes","flags"];
-function csvCell(v){
-  v = v==null ? "" : String(v);
-  return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
-}
+/* ---------- CSV ---------- */
+const COLS=["lap","bell","arrived","departed","lap_min","camp_min","buffer_min",
+ "drink_course","drink_course_amt","drink_camp","drink_camp_amt","taken","refused","other",
+ "kcal","carb_g","sodium_mg","fluid_ml","caffeine_mg",
+ "plan_kcal","plan_carb_g","plan_sodium_mg","plan_fluid_ml",
+ "gut","mood","legs","layers","toilet","swelling","symptoms","symptom_other",
+ "new_onsets","maintenance","notes","flags"];
+function csvCell(v){ v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function buildCSV(){
-  const lines = [COLS.join(",")];
-  S.laps.forEach(l=>{
-    const t = totals(l);
-    const taken = Object.keys(l.items).filter(k=>l.items[k]===1).map(k=>(prod(k)||{}).name||k);
-    const ref   = Object.keys(l.items).filter(k=>l.items[k]===2).map(k=>(prod(k)||{}).name||k);
-    const flags = [t.est?"ESTIMATED_VALUES":"", t.unset?"UNSET_PRODUCT":"", l.swell==="yes"?"SWELLING":""].filter(Boolean).join(" ");
-    lines.push([
-      l.n, hhmmss(l.arrived), hhmmss(l.departed),
-      l.departed&&l.arrived ? ((l.departed-l.arrived)/60000).toFixed(1) : "",
+  const lines=[COLS.join(",")];
+  [...S.laps].sort((a,b)=>a.n-b.n).forEach(l=>{
+    const t=totals(l), g=planTarget(l.n);
+    const taken=Object.keys(l.items).filter(k=>l.items[k].s===1)
+      .map(k=>`${(prod(k)||{}).name||k} x${l.items[k].q==null?1:l.items[k].q}`);
+    const ref=Object.keys(l.items).filter(k=>l.items[k].s===2).map(k=>(prod(k)||{}).name||k);
+    const flags=[t.est?"ESTIMATED_VALUES":"",t.unset?"UNSET_PRODUCT":"",l.swell==="yes"?"SWELLING":""].filter(Boolean).join(" ");
+    lines.push([l.n,hhmmss(whistle(l.n)),hhmmss(l.arrived),hhmmss(l.departed),
+      mins(lapRunMs(l)),mins(campMs(l)),mins(bufferMs(l)),
       l.drink?((prod(l.drink)||{}).name||l.drink):"", l.drink?l.drinkAmt:"",
-      taken.join("; "), ref.join("; "), (l.extra||[]).join("; "),
-      round(t.kcal), round(t.carb), round(t.na), round(t.ml), round(t.caf),
-      l.gut??"", l.mood??"", l.legs??"", l.urine??"", l.layers??"", l.toilet||"",
-      l.symptoms.join("; "), l.newOnsets.join("; "), l.maint.join("; "),
-      (l.notes||"").replace(/\n/g," "), flags
-    ].map(csvCell).join(","));
+      l.drink2?((prod(l.drink2)||{}).name||l.drink2):"", l.drink2?l.drink2Amt:"",
+      taken.join("; "),ref.join("; "),(l.extra||[]).join("; "),
+      round(t.kcal),round(t.carb),round(t.na),round(t.ml),round(t.caf),
+      g.kcal,g.carb,g.na,g.ml,
+      l.gut??"",l.mood??"",l.legs??"",l.layers??"",l.toilet||"",l.swell||"",
+      l.symptoms.join("; "),l.symOther||"",l.newOnsets.join("; "),l.maint.join("; "),
+      (l.notes||"").replace(/\n/g," "),flags].map(csvCell).join(","));
   });
   return lines.join("\n");
 }
+function parseCSVLine(line){
+  const out=[]; let cur="",q=false;
+  for(let i=0;i<line.length;i++){ const c=line[i];
+    if(q){ if(c==='"'&&line[i+1]==='"'){cur+='"';i++;} else if(c==='"')q=false; else cur+=c; }
+    else { if(c==='"')q=true; else if(c===","){out.push(cur);cur="";} else cur+=c; } }
+  out.push(cur); return out;
+}
 
-/* ============================================================
-   BACKUP — four independent copies of the record:
-     1. localStorage        2. IndexedDB
-     3. OPFS file (silent, survives an app wipe less well than 4)
-     4. CSV file in /Download (survives everything short of losing the phone)
-   Plus 5. the Google Sheet when there is signal.
-   Any one of them can rebuild the race.
-   ============================================================ */
-async function opfsWrite(text){
-  try{
-    if(!navigator.storage || !navigator.storage.getDirectory) return false;
-    const dir = await navigator.storage.getDirectory();
-    const fh  = await dir.getFileHandle("lap-log.csv",{create:true});
-    const w   = await fh.createWritable();
-    await w.write(text); await w.close();
-    return true;
-  }catch(e){ return false; }
-}
-async function opfsRead(){
-  try{
-    const dir = await navigator.storage.getDirectory();
-    const fh  = await dir.getFileHandle("lap-log.csv");
-    return await (await fh.getFile()).text();
-  }catch(e){ return null; }
-}
-function downloadCSV(name){
-  try{
-    const blob=new Blob([buildCSV()],{type:"text/csv"});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");
-    a.href=url; a.download=name; a.style.display="none";
-    document.body.appendChild(a); a.click();
-    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },4000);
-    return true;
-  }catch(e){ return false; }
-}
+/* ---------- backup ---------- */
+async function opfsWrite(text){ try{
+  if(!navigator.storage||!navigator.storage.getDirectory) return false;
+  const d=await navigator.storage.getDirectory();
+  const f=await d.getFileHandle("lap-log.csv",{create:true});
+  const w=await f.createWritable(); await w.write(text); await w.close(); return true;
+}catch(e){ return false; } }
+async function opfsRead(){ try{
+  const d=await navigator.storage.getDirectory();
+  const f=await d.getFileHandle("lap-log.csv");
+  return await (await f.getFile()).text();
+}catch(e){ return null; } }
+function downloadCSV(name){ try{
+  const b=new Blob([buildCSV()],{type:"text/csv"}), u=URL.createObjectURL(b);
+  const a=document.createElement("a"); a.href=u; a.download=name; a.style.display="none";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(u);a.remove();},4000); return true;
+}catch(e){ return false; } }
 async function snapshot(lapN,manual){
-  const csv=buildCSV();
-  const okO=await opfsWrite(csv);
-  let okD=false;
-  const every=S.settings.snapEvery||1;
-  if(manual || lapN===null || lapN%every===0){
-    okD=downloadCSV(`lap-log-${String(lapN??"manual").padStart(2,"0")}.csv`);
-  }
-  S.lastBackup={ts:now(),lap:lapN,opfs:okO,file:okD};
-  save();
+  const csv=buildCSV(); const okO=await opfsWrite(csv);
+  let okD=false; const every=S.settings.snapEvery||1;
+  if(manual||lapN==null||lapN%every===0) okD=downloadCSV(`lap-log-${String(lapN??"manual").padStart(2,"0")}.csv`);
+  S.lastBackup={ts:now(),lap:lapN,opfs:okO,file:okD}; save();
   if(manual) toast(okD?"Backup saved to Downloads":"Saved to device store only");
 }
-
-/* rebuild the whole race from a CSV — the recovery path */
 function importCSV(text){
-  const rows=text.replace(/\r/g,"").split("\n").filter(r=>r.trim().length);
+  const rows=text.replace(/\r/g,"").split("\n").filter(r=>r.trim());
   if(!rows.length) throw new Error("empty file");
-  const head=parseCSVLine(rows[0]);
-  const ix=n=>head.indexOf(n);
+  const head=parseCSVLine(rows[0]); const ix=n=>head.indexOf(n);
   if(ix("lap")<0) throw new Error("no 'lap' column — is this a lap log CSV?");
   const byName=n=>{ const p=S.products.find(p=>p.name===n); return p?p.id:null; };
-  const toTs=t=>{
-    if(!t) return null;
-    const d=new Date(); const [h,m,sec]=t.split(":").map(Number);
-    d.setHours(h||0,m||0,sec||0,0); return d.getTime();
-  };
-  const laps=[], onsets={};
+  const base=S.raceStart?new Date(S.raceStart):new Date();
+  const toTs=t=>{ if(!t) return null; const [h,m,s]=t.split(":").map(Number);
+    const d=new Date(base); d.setHours(h||0,m||0,s||0,0); return d.getTime(); };
+  const laps=[],onsets={};
   rows.slice(1).forEach(r=>{
-    const c=parseCSVLine(r);
-    const g=n=>{ const i=ix(n); return i<0?"":c[i]; };
+    const c=parseCSVLine(r), g=n=>{const i=ix(n); return i<0?"":c[i];};
     const n=parseInt(g("lap"),10); if(!n) return;
     const l=blankLap(n);
     l.arrived=toTs(g("arrived")); l.departed=toTs(g("departed"));
     if(l.arrived&&l.departed&&l.departed<l.arrived) l.departed+=864e5;
-    l.drink=byName(g("drink")); l.drinkAmt=g("drink_amount")||"all";
+    l.drink=byName(g("drink_course"))||null; l.drinkAmt=g("drink_course_amt")||"all";
+    l.drink2=byName(g("drink_camp"))||null; l.drink2Amt=g("drink_camp_amt")||"all";
     l.items={};
-    g("taken").split(";").map(x=>x.trim()).filter(Boolean).forEach(nm=>{
-      const id=byName(nm); if(id) l.items[id]=1; else l.extra.push(nm);
+    g("taken").split(";").map(x=>x.trim()).filter(Boolean).forEach(s=>{
+      const m=s.match(/^(.*?)\s+x([\d.]+)$/); const nm=m?m[1]:s; const q=m?parseFloat(m[2]):1;
+      const id=byName(nm); if(id) l.items[id]={s:1,q}; else l.extra.push(s);
     });
     g("refused").split(";").map(x=>x.trim()).filter(Boolean).forEach(nm=>{
-      const id=byName(nm); if(id) l.items[id]=2;
+      const id=byName(nm); if(id) l.items[id]={s:2,q:1};
     });
     g("other").split(";").map(x=>x.trim()).filter(Boolean).forEach(x=>l.extra.push(x));
     const num=v=>v===""?null:(isNaN(+v)?v:+v);
     l.gut=num(g("gut")); l.mood=num(g("mood")); l.legs=num(g("legs"));
-    l.urine=num(g("urine")); l.layers=g("layers")||null; l.toilet=g("toilet")||"None";
+    l.layers=g("layers")||null; l.toilet=g("toilet")||"None"; l.swell=g("swelling")||null;
     l.symptoms=g("symptoms").split(";").map(x=>x.trim()).filter(Boolean);
+    l.symOther=g("symptom_other")||"";
     l.newOnsets=g("new_onsets").split(";").map(x=>x.trim()).filter(Boolean);
     l.maint=g("maintenance").split(";").map(x=>x.trim()).filter(Boolean);
     l.notes=g("notes"); l.synced=false;
-    if(/SWELLING/.test(g("flags"))) l.swell="yes";
     l.newOnsets.forEach(sy=>{ if(!onsets[sy]) onsets[sy]={lap:n,ts:l.arrived||now()}; });
     laps.push(l);
   });
   if(!laps.length) throw new Error("no lap rows found");
   laps.sort((a,b)=>a.n-b.n);
-  S.laps=laps; S.onsets=onsets; S.cur=null;
+  S.laps=laps; S.onsets=onsets; S.cur=null; S.editN=null;
   S.nextLap=laps[laps.length-1].n+1;
-  save();
-  return laps.length;
+  if(!S.raceStart && laps[0].arrived) S.raceStart=laps[0].arrived-3060000;
+  save(); return laps.length;
 }
+
+/* ---------- EXPORT VIEW ---------- */
 function viewOut(){
-  const csv = buildCSV();
-  const unsynced = S.laps.filter(l=>!l.synced).length;
+  const csv=buildCSV(), un=S.laps.filter(l=>!l.synced).length;
   return `
   <section class="card">
     <p class="eyebrow">Get the data out</p>
@@ -799,26 +798,22 @@ function viewOut(){
       <button class="big" id="dl">Download CSV</button>
       <button class="big" id="cp">Copy CSV</button>
       <button class="big wide" id="shareBtn">Share…</button>
-      <button class="big wide" id="syncNow" ${S.settings.syncUrl?"":"disabled"}>Push to sheet${unsynced?` (${unsynced} waiting)`:""}</button>
+      <button class="big wide" id="syncNow" ${S.settings.syncUrl?"":"disabled"}>Push to sheet${un?` (${un} waiting)`:""}</button>
     </div>
-    <p class="hint">If everything else fails, screenshot the box below. ${S.laps.length} lap${S.laps.length===1?"":"s"} recorded.</p>
-  </section>
-  <section class="card">
-    <p class="eyebrow">CSV</p>
-    <textarea id="csvBox" readonly style="min-height:240px;font-family:ui-monospace,monospace;font-size:11px">${csv.replace(/</g,"&lt;")}</textarea>
+    <p class="hint">${S.laps.length} lap${S.laps.length===1?"":"s"} recorded.</p>
   </section>
   <section class="card">
     <p class="eyebrow">Backups</p>
-    <div class="kv"><span>Device store (localStorage)</span><b>${persistOK?"on":"OFF"}</b></div>
-    <div class="kv"><span>Private file store (OPFS)</span><b>${S.lastBackup?(S.lastBackup.opfs?"on":"unavailable"):"—"}</b></div>
+    <div class="kv"><span>Device store</span><b>${persistOK?"on":"OFF"}</b></div>
+    <div class="kv"><span>Private file store</span><b>${S.lastBackup?(S.lastBackup.opfs?"on":"unavailable"):"—"}</b></div>
     <div class="kv"><span>Last file to Downloads</span><b class="mono">${S.lastBackup&&S.lastBackup.file?("lap "+S.lastBackup.lap+" · "+hhmm(S.lastBackup.ts)):"none yet"}</b></div>
-    <div class="kv"><span>Sheet</span><b>${S.settings.syncUrl?(S.laps.filter(l=>!l.synced).length+" queued"):"off"}</b></div>
+    <div class="kv"><span>Sheet</span><b>${S.settings.syncUrl?(un+" queued"):"off"}</b></div>
     <button class="big wide" id="backupNow" style="width:100%;margin-top:12px">Back up now</button>
-    <p class="hint">A CSV is written automatically every ${S.settings.snapEvery===1?"lap":S.settings.snapEvery+" laps"}. Android will ask once to allow multiple downloads — say yes.</p>
+    <p class="hint">A CSV is written every ${S.settings.snapEvery===1?"lap":S.settings.snapEvery+" laps"}. Android asks once to allow multiple downloads — say yes.</p>
   </section>
   <section class="card">
     <p class="eyebrow">Recover</p>
-    <p class="hint">Rebuilds the whole race from a CSV. Use this on a spare phone if this one dies.</p>
+    <p class="hint">Rebuilds the whole race from a CSV. Use on a spare phone if this one dies.</p>
     <div class="bigrow" style="margin-top:10px">
       <button class="big" id="recOpfs">From device store</button>
       <button class="big" id="recFile">From a CSV file</button>
@@ -827,363 +822,281 @@ function viewOut(){
     <div id="recMsg"></div>
   </section>
   <section class="card">
+    <p class="eyebrow">CSV</p>
+    <textarea id="csvBox" readonly style="min-height:220px;font-family:ui-monospace,monospace;font-size:11px">${csv.replace(/</g,"&lt;")}</textarea>
+  </section>
+  <section class="card">
     <p class="eyebrow">Danger</p>
     <button class="big wide" id="wipe" style="width:100%;color:var(--red);border-color:var(--alert-line)">Erase everything</button>
   </section>`;
 }
 
-/* ---------- SETUP ---------- */
+/* ---------- SETUP VIEW ---------- */
 function viewSet(){
-  const st = S.settings;
+  const st=S.settings;
   return `
-  <section class="card">
-    <p class="eyebrow">Race</p>
-    <label class="f">Name</label><input type="text" id="sName" value="${st.raceName||""}">
-    <label class="f">Start time</label><input type="time" id="sStart" value="${st.startTime||""}">
-    <label class="f">Target laps</label><input type="number" id="sLaps" value="${st.targetLaps}">
-    <label class="f">Miles per lap</label><input type="text" id="sMiles" value="${st.lapMiles}">
-  </section>
-
-  <section class="card">
-    <p class="eyebrow">Lap plan</p>
-    <p class="hint">One line per lap: <span class="mono">lap, drink, food, food</span>. Names are matched loosely against the product list below. Planned items show with a dashed outline on the Lap tab.</p>
-    <textarea id="sPlan" style="min-height:150px;font-family:ui-monospace,monospace;font-size:12px" placeholder="1, tailwind
-2, skratch, gel, digestive
-3, tailwind, banana">${(st.planText||"").replace(/</g,"&lt;")}</textarea>
-    <button class="big wide" id="savePlan" style="width:100%;margin-top:10px">Load plan</button>
-    <div id="planMsg"></div>
-  </section>
-
-  <section class="card">
-    <p class="eyebrow">Products</p>
-    <p class="hint">Per-serving values used to compute the totals. Edit any that don't match the pack.</p>
-    ${S.products.map((p,i)=>`
-      <details ${p.unset?"open":""}>
-        <summary style="color:${p.unset?"var(--red)":"var(--muted)"}">${p.name} — ${p.kcal} kcal · ${p.carb}g · ${p.na}mg${p.unset?" · NOT SET":""}${p.est?" · est":""}</summary>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-          <div><label class="f" style="margin-top:0">kcal</label><input type="number" data-p="${i}" data-k="kcal" value="${p.kcal}"></div>
-          <div><label class="f" style="margin-top:0">carb g</label><input type="number" data-p="${i}" data-k="carb" value="${p.carb}"></div>
-          <div><label class="f" style="margin-top:0">sodium mg</label><input type="number" data-p="${i}" data-k="na" value="${p.na}"></div>
-          <div><label class="f" style="margin-top:0">caffeine mg</label><input type="number" data-p="${i}" data-k="caf" value="${p.caf}"></div>
-          <div><label class="f" style="margin-top:0">fluid ml</label><input type="number" data-p="${i}" data-k="ml" value="${p.ml}"></div>
-          <div><label class="f" style="margin-top:0">id</label><input type="text" value="${p.id}" readonly style="color:var(--muted)"></div>
-        </div>
-      </details>`).join("")}
-  </section>
-
   <section class="card">
     <p class="eyebrow">App</p>
     <div class="kv"><span>Version</span><b class="mono">${APP_VERSION}</b></div>
-    <label class="f">Theme</label>
-    <div class="seg sm">${[["dark","Dark"],["light","Light"],["auto","Auto"]].map(([v,l])=>`<button data-theme-set="${v}" aria-pressed="${(S.settings.theme||"dark")===v}">${l}</button>`).join("")}</div>
-    <p class="hint">Dark protects night vision at 3am. Auto follows the phone.</p>
+    <div class="kv"><span>Plan</span><b class="mono">${RACE_META.planVersion} · ${Object.keys(RACE_PLAN).length} laps</b></div>
     <div class="kv"><span>Offline</span><b>${navigator.serviceWorker&&navigator.serviceWorker.controller?"ready":"not cached yet"}</b></div>
+    <label class="f">Theme</label>
+    <div class="seg sm">${[["dark","Dark"],["light","Light"],["auto","Auto"]].map(([v,l])=>`<button data-theme-set="${v}" aria-pressed="${(st.theme||"dark")===v}">${l}</button>`).join("")}</div>
     <label class="f">Auto-backup a CSV every</label>
-    <div class="seg sm">${[1,5,10].map(v=>`<button data-snap="${v}" aria-pressed="${(S.settings.snapEvery||1)===v}">${v===1?"lap":v+" laps"}</button>`).join("")}</div>
+    <div class="seg sm">${[1,5,10].map(v=>`<button data-snap="${v}" aria-pressed="${(st.snapEvery||1)===v}">${v===1?"lap":v+" laps"}</button>`).join("")}</div>
     <button class="big wide" id="updChk" style="width:100%;margin-top:14px">Check for update</button>
     <p class="hint">The app never updates itself. Don't check for updates during the race.</p>
     <div id="updMsg"></div>
   </section>
 
   <section class="card">
+    <p class="eyebrow">Race</p>
+    <div class="kv"><span>Event</span><b>${RACE_META.name}</b></div>
+    <div class="kv"><span>Bell for lap 1</span><b class="mono">${S.raceStart?hhmm(S.raceStart):"not started"}</b></div>
+    <label class="f">Correct the start time</label>
+    <input type="time" id="sStart" step="60" value="${S.raceStart?hhmm(S.raceStart):(st.startTime||"10:00")}">
+    <p class="legend">Every lap starts on the hour from here. Changing this shifts every bell, lap time and buffer.</p>
+    <label class="f">Target laps</label><input type="number" id="sLaps" value="${st.targetLaps}">
+  </section>
+
+  <section class="card">
+    <p class="eyebrow">Products</p>
+    <p class="hint">Per-serving values behind the totals. Edit any that don't match the pack.</p>
+    ${S.products.map((p,i)=>`
+      <details ${p.unset?"open":""}>
+        <summary style="color:${p.unset?"var(--red)":"var(--muted)"}">${p.name} — ${p.kcal} kcal · ${p.carb}g · ${p.na}mg${p.unset?" · NOT SET":""}${p.est?" · est":""}</summary>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+          ${["kcal","carb","na","caf","ml"].map(k=>`<div><label class="f" style="margin-top:0">${({kcal:"kcal",carb:"carb g",na:"sodium mg",caf:"caffeine mg",ml:"fluid ml"})[k]}</label><input type="number" data-p="${i}" data-k="${k}" value="${p[k]}"></div>`).join("")}
+        </div>
+      </details>`).join("")}
+  </section>
+
+  <section class="card">
     <p class="eyebrow">Sheet sync</p>
-    <p class="hint">Optional. The phone is the record; the sheet is a mirror. Rows queue and go up whenever there's signal.</p>
+    <p class="hint">The phone is the record; the sheet is a mirror.</p>
     <label class="f">Apps Script web app URL</label><input type="url" id="sUrl" value="${st.syncUrl||""}" placeholder="https://script.google.com/macros/s/…/exec">
     <label class="f">Shared secret</label><input type="text" id="sSec" value="${st.syncSecret||""}">
     <button class="big wide" id="saveSync" style="width:100%;margin-top:12px">Save sync settings</button>
     <button class="big wide" id="testSync" style="width:100%;margin-top:8px">Test connection</button>
     <button class="big wide" id="mkLink" style="width:100%;margin-top:8px">Copy setup link for another phone</button>
     <div id="syncMsg">${S.syncErr?`<div class="err">Last error: ${String(S.syncErr).replace(/</g,"&lt;").slice(0,220)}</div>`:""}${S.lastSync?`<p class="hint">Sheet last replied: <span class="mono">${String(S.lastSync).replace(/</g,"&lt;").slice(0,140)}</span></p>`:""}</div>
-    <details style="margin-top:14px">
-      <summary>Apps Script to paste in the sheet</summary>
-<pre>var SECRET = 'CHANGE_ME';   // &lt;-- must match the secret box above
-
-function doGet(){ return reply('OK:0'); }
-
-function doPost(e){
-  try {
-    var d = JSON.parse(e.postData.contents);
-    if (String(d.secret) !== String(SECRET)) return reply('ERR: wrong secret');
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sh = ss.getSheetByName('laps') || ss.insertSheet('laps');
-    if (sh.getLastRow() === 0) sh.appendRow(d.cols);
-    var ids = sh.getRange(1,1,sh.getLastRow(),1).getValues()
-                .map(function(x){ return String(x[0]); });
-    d.rows.forEach(function(r){
-      var f = ids.indexOf(String(r[0]));       // string compare, or it never matches
-      if (f &gt; 0) sh.getRange(f+1,1,1,r.length).setValues([r]);
-      else { sh.appendRow(r); ids.push(String(r[0])); }
-    });
-    SpreadsheetApp.flush();
-    return reply('OK:' + d.rows.length);
-  } catch (err) { return reply('ERR: ' + err); }
-}
-
-function reply(t){
-  return ContentService.createTextOutput(t)
-    .setMimeType(ContentService.MimeType.TEXT);
-}</pre>
-      <p class="hint"><b>Deploy → New deployment → Web app → Execute as: Me → Who has access: Anyone.</b> Not "Anyone with a Google account" — that returns a login page, which the old build counted as success. Any edit to the script needs a <i>new</i> deployment; editing alone leaves the old code live on the same URL.</p>
-    </details>
   </section>`;
 }
 
 /* ============================================================
    EVENTS
    ============================================================ */
+function setTimeOn(l,field,val){
+  if(!val){ l[field]=null; return; }
+  const [h,m]=val.split(":").map(Number);
+  const anchor = whistle(l.n) || l.arrived || now();
+  const d=new Date(anchor); d.setHours(h,m,0,0);
+  let ts=d.getTime();
+  // a departure before the arrival means it rolled past midnight
+  if(field==="departed" && l.arrived && ts<l.arrived) ts+=864e5;
+  if(field==="arrived" && whistle(l.n) && ts<whistle(l.n)-3600000) ts+=864e5;
+  l[field]=ts;
+}
+
 function bind(){
-  const on = (sel,ev,fn)=>{ const el=$(sel); if(el) el.addEventListener(ev,fn); };
+  const on=(s,e,f)=>{ const el=$(s); if(el) el.addEventListener(e,f); };
+  const L=activeLap();
 
+  on("#btnStart","click",()=>{
+    S.raceStart=now(); S.nextLap=1; save(); render();
+    toast("Race started "+hhmm(S.raceStart)+" — bells on the hour");
+  });
   on("#btnIn","click",()=>{
-    S.cur = blankLap(S.nextLap);
-    S.cur.arrived = now();
-    save(); render(); startClock();
+    S.cur=blankLap(S.nextLap); S.cur.arrived=now(); save(); render(); startClock();
   });
-  on("#undoIn","click",()=>{
-    if(confirm("Discard this lap's capture and go back?")){ S.cur=null; save(); render(); }
-  });
-  const depart = ()=>{
-    const l = S.cur;
-    l.departed = now();
-    S.laps.push(l);
-    S.nextLap = l.n + 1;
-    S.cur = null;
+  on("#undoIn","click",()=>{ if(confirm("Discard this lap's capture?")){ S.cur=null; save(); render(); } });
+
+  const depart=()=>{
+    const l=S.cur; if(!l) return;
+    if(!l.departed) l.departed=now();
+    S.laps.push(l); S.nextLap=l.n+1; S.cur=null;
     save(); snapshot(l.n,false); queueSync(); render();
-    toast(`Lap ${l.n} saved · ${mmss(l.departed-l.arrived)} in camp`);
+    toast(`Lap ${l.n} saved · ${mmss(campMs(l))} in camp`);
   };
-  on("#btnOut","click",depart);
-  on("#btnOut2","click",depart);
+  on("#btnOut","click",depart); on("#btnOut2","click",depart);
 
-  // drink
-  document.querySelectorAll("[data-drink]").forEach(b=>b.addEventListener("click",()=>{
-    S.cur.drink = (S.cur.drink===b.dataset.drink) ? null : b.dataset.drink;
-    save(); render();
-  }));
-  document.querySelectorAll("[data-amt]").forEach(b=>b.addEventListener("click",()=>{
-    S.cur.drinkAmt = b.dataset.amt; save(); render();
-  }));
-
-  // food chips: taken -> refused -> clear
-  document.querySelectorAll("[data-item]").forEach(b=>b.addEventListener("click",()=>{
-    const id=b.dataset.item, cur=S.cur.items[id]||0, next=(cur+1)%3;
-    if(next===0) delete S.cur.items[id]; else S.cur.items[id]=next;
-    save(); render();
-  }));
-  document.querySelectorAll("[data-extra]").forEach(b=>b.addEventListener("click",()=>{
-    S.cur.extra.splice(+b.dataset.extra,1); save(); render();
-  }));
-  on("#extraAdd","click",()=>{
-    const v = $("#extraIn").value.trim();
-    if(!v) return;
-    S.cur.extra.push(v); save(); render();
+  const doneEdit=()=>{
+    const l=activeLap(); if(l) l.synced=false;
+    S.editN=null; S.tab="log"; save(); snapshot(null,false); queueSync(); render();
+    toast("Lap updated");
+  };
+  on("#doneEdit","click",doneEdit); on("#doneEdit2","click",doneEdit);
+  on("#delLap","click",()=>{
+    const n=S.editN;
+    if(!confirm(`Delete lap ${n} completely?`)) return;
+    S.laps=S.laps.filter(l=>l.n!==n);
+    S.editN=null; S.tab="log"; save(); render(); toast("Lap "+n+" deleted");
   });
-  on("#extraIn","keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#extraAdd").click(); } });
 
-  // ratings
-  document.querySelectorAll("[data-rate]").forEach(b=>b.addEventListener("click",()=>{
-    const f=b.dataset.rate, raw=b.dataset.v, v=isNaN(+raw)?raw:+raw;
-    S.cur[f] = (S.cur[f]===v) ? null : v;
-    save(); render();
-  }));
+  if(L){
+    on("#tIn","change",e=>{ setTimeOn(L,"arrived",e.target.value); save(); render(); });
+    on("#tOut","change",e=>{ setTimeOn(L,"departed",e.target.value); save(); render(); });
 
-  // symptoms + onset stamping
-  document.querySelectorAll("[data-sym]").forEach(b=>b.addEventListener("click",()=>{
-    const s=b.dataset.sym, i=S.cur.symptoms.indexOf(s);
-    if(i>=0){
-      S.cur.symptoms.splice(i,1);
-      const j=S.cur.newOnsets.indexOf(s);
-      if(j>=0){ S.cur.newOnsets.splice(j,1); delete S.onsets[s]; }
-    }else{
-      S.cur.symptoms.push(s);
-      if(!S.onsets[s]){
-        S.onsets[s]={lap:S.cur.n, ts:now()};
-        S.cur.newOnsets.push(s);
-        toast(`First ${s.toLowerCase()} — lap ${S.cur.n}, ${hhmm(now())}`);
-      }
-    }
-    save(); render();
-  }));
+    document.querySelectorAll("[data-drink]").forEach(b=>b.addEventListener("click",()=>{
+      L.drink=(L.drink===b.dataset.drink)?null:b.dataset.drink; save(); render(); }));
+    document.querySelectorAll("[data-drink2]").forEach(b=>b.addEventListener("click",()=>{
+      L.drink2=(L.drink2===b.dataset.drink2)?null:b.dataset.drink2; save(); render(); }));
+    document.querySelectorAll("[data-amt]").forEach(b=>b.addEventListener("click",()=>{
+      L.drinkAmt=b.dataset.amt; save(); render(); }));
+    document.querySelectorAll("[data-amt2]").forEach(b=>b.addEventListener("click",()=>{
+      L.drink2Amt=b.dataset.amt2; save(); render(); }));
 
-  document.querySelectorAll("[data-toilet]").forEach(b=>b.addEventListener("click",()=>{
-    S.cur.toilet=b.dataset.toilet; save(); render();
-  }));
-  document.querySelectorAll("[data-maint]").forEach(b=>b.addEventListener("click",()=>{
-    const m=b.dataset.maint, i=S.cur.maint.indexOf(m);
-    if(i>=0) S.cur.maint.splice(i,1); else S.cur.maint.push(m);
-    save(); render();
-  }));
-  document.querySelectorAll("[data-swell]").forEach(b=>b.addEventListener("click",()=>{
-    S.cur.swell=b.dataset.swell; save(); render();
-    if(b.dataset.swell==="yes") showFlags(true);
-  }));
-  on("#notes","input",e=>{ S.cur.notes=e.target.value; save(); });
+    document.querySelectorAll("[data-item]").forEach(b=>b.addEventListener("click",()=>{
+      const id=b.dataset.item, e=L.items[id], cur=e?e.s:0, next=(cur+1)%3;
+      if(next===0) delete L.items[id];
+      else L.items[id]={s:next, q: e&&e.q!=null ? e.q : plannedQty(L.n,id)};
+      save(); render(); }));
+    document.querySelectorAll("[data-portion]").forEach(b=>b.addEventListener("click",()=>{
+      const id=b.dataset.portion; if(L.items[id]) L.items[id].q=parseFloat(b.dataset.q);
+      save(); render(); }));
+    document.querySelectorAll("[data-extra]").forEach(b=>b.addEventListener("click",()=>{
+      L.extra.splice(+b.dataset.extra,1); save(); render(); }));
+    on("#extraAdd","click",()=>{ const v=$("#extraIn").value.trim(); if(!v) return; L.extra.push(v); save(); render(); });
+    on("#extraIn","keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#extraAdd").click(); } });
+
+    document.querySelectorAll("[data-rate]").forEach(b=>b.addEventListener("click",()=>{
+      const f=b.dataset.rate, raw=b.dataset.v, v=isNaN(+raw)?raw:+raw;
+      L[f]=(L[f]===v)?null:v; save(); render(); }));
+
+    document.querySelectorAll("[data-sym]").forEach(b=>b.addEventListener("click",()=>{
+      const s=b.dataset.sym, i=L.symptoms.indexOf(s);
+      if(i>=0){ L.symptoms.splice(i,1);
+        const j=L.newOnsets.indexOf(s); if(j>=0){ L.newOnsets.splice(j,1); delete S.onsets[s]; } }
+      else { L.symptoms.push(s);
+        if(!S.onsets[s]){ S.onsets[s]={lap:L.n,ts:L.arrived||now()}; L.newOnsets.push(s);
+          toast(`First ${s.toLowerCase()} — lap ${L.n}`); } }
+      save(); render(); }));
+    on("#symOther","input",e=>{ L.symOther=e.target.value; save(); });
+
+    document.querySelectorAll("[data-toilet]").forEach(b=>b.addEventListener("click",()=>{
+      L.toilet=b.dataset.toilet; save(); render(); }));
+    document.querySelectorAll("[data-maint]").forEach(b=>b.addEventListener("click",()=>{
+      const m=b.dataset.maint, i=L.maint.indexOf(m);
+      if(i>=0) L.maint.splice(i,1); else L.maint.push(m); save(); render(); }));
+    document.querySelectorAll("[data-swell]").forEach(b=>b.addEventListener("click",()=>{
+      L.swell=b.dataset.swell; save(); render();
+      if(b.dataset.swell==="yes") showFlags(true); }));
+    on("#notes","input",e=>{ L.notes=e.target.value; save(); });
+  }
+
   on("#btnFlags","click",()=>showFlags(false));
 
-  // log
   document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{
-    const n=+b.dataset.open, i=S.laps.findIndex(l=>l.n===n);
-    if(i<0) return;
-    if(S.cur && !confirm("A lap is open. Discard it and edit lap "+n+"?")) return;
-    S.cur = S.laps.splice(i,1)[0];
-    S.cur.synced = false;
-    S.tab="lap"; save(); render(); startClock();
-    toast("Editing lap "+n+" — tap Departed to save it back");
+    S.editN=+b.dataset.open; S.tab="lap"; save(); render();
+    toast("Editing lap "+S.editN);
   }));
 
-  // export
-  on("#dl","click",()=>{
-    const blob = new Blob([buildCSV()],{type:"text/csv"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(blob);
-    a.download=`lap-log-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-  });
-  on("#cp","click",async()=>{
-    try{ await navigator.clipboard.writeText(buildCSV()); toast("CSV copied"); }
-    catch(e){ $("#csvBox").select(); toast("Select and copy from the box"); }
-  });
-  on("#shareBtn","click",async()=>{
-    try{
+  on("#dl","click",()=>downloadCSV(`lap-log-${new Date().toISOString().slice(0,10)}.csv`));
+  on("#cp","click",async()=>{ try{ await navigator.clipboard.writeText(buildCSV()); toast("CSV copied"); }
+    catch(e){ $("#csvBox").select(); toast("Select and copy from the box"); } });
+  on("#shareBtn","click",async()=>{ try{
       const f=new File([buildCSV()],"lap-log.csv",{type:"text/csv"});
-      if(navigator.canShare && navigator.canShare({files:[f]})) await navigator.share({files:[f],title:"Lap log"});
+      if(navigator.canShare&&navigator.canShare({files:[f]})) await navigator.share({files:[f],title:"Lap log"});
       else await navigator.share({text:buildCSV(),title:"Lap log"});
-    }catch(e){ toast("Sharing unavailable — use Download"); }
-  });
+    }catch(e){ toast("Sharing unavailable — use Download"); } });
   on("#syncNow","click",()=>queueSync(true));
   on("#backupNow","click",()=>snapshot(S.laps.length?S.laps[S.laps.length-1].n:0,true));
   on("#recOpfs","click",async()=>{
-    const out=$("#recMsg");
-    const txt=await opfsRead();
+    const out=$("#recMsg"), txt=await opfsRead();
     if(!txt){ out.innerHTML=`<div class="err">Nothing in the device store.</div>`; return; }
-    if(!confirm("Replace everything in this app with the device store copy?")) return;
+    if(!confirm("Replace everything with the device store copy?")) return;
     try{ const n=importCSV(txt); render(); toast(n+" laps recovered"); }
     catch(e){ out.innerHTML=`<div class="err">${String(e.message)}</div>`; }
   });
   on("#recFile","click",()=>$("#fileIn").click());
   on("#fileIn","change",async e=>{
-    const f=e.target.files[0]; if(!f) return;
-    const out=$("#recMsg");
-    try{
-      const txt=await f.text();
+    const f=e.target.files[0]; if(!f) return; const out=$("#recMsg");
+    try{ const txt=await f.text();
       if(!confirm(`Replace everything with ${f.name}?`)) return;
       const n=importCSV(txt); render(); toast(n+" laps recovered");
     }catch(err){ out.innerHTML=`<div class="err">${String(err.message)}</div>`; }
   });
-  document.querySelectorAll("[data-theme-set]").forEach(b=>b.addEventListener("click",()=>{
-    S.settings.theme=b.dataset.themeSet; save(); applyTheme(); render();
-  }));
-  document.querySelectorAll("[data-snap]").forEach(b=>b.addEventListener("click",()=>{
-    S.settings.snapEvery=+b.dataset.snap; save(); render();
-  }));
-  on("#updChk","click",async()=>{
-    const out=$("#updMsg");
-    if(S.cur||S.laps.length){ if(!confirm("A race is in progress. Updating mid-race is risky. Continue?")) return; }
-    out.innerHTML=`<p class="hint">Checking…</p>`;
-    try{
-      if(!swReg){ out.innerHTML=`<div class="err">No service worker registered.</div>`; return; }
-      await swReg.update();
-      if(swReg.waiting){
-        out.innerHTML=`<div class="warn">A new version is ready. <b>Reload twice</b> to load it.</div>`;
-        swReg.waiting.postMessage({type:"SKIP_WAITING"});
-      } else {
-        out.innerHTML=`<p class="hint">Already on the latest cached version (${APP_VERSION}).</p>`;
-      }
-    }catch(e){ out.innerHTML=`<div class="err">Couldn't check — probably offline.</div>`; }
-  });
   on("#wipe","click",()=>{
     if(!confirm("Erase every lap? This cannot be undone.")) return;
     if(!confirm("Really erase? Export first if you haven't.")) return;
-    S.laps=[]; S.cur=null; S.onsets={}; S.nextLap=1; save(); render(); toast("Erased");
+    S.laps=[]; S.cur=null; S.editN=null; S.onsets={}; S.nextLap=1; S.raceStart=null;
+    save(); render(); toast("Erased");
   });
 
-  // setup
-  const sset=(id,key,cast)=>on(id,"change",e=>{
-    S.settings[key]=cast?cast(e.target.value):e.target.value; save();
+  document.querySelectorAll("[data-theme-set]").forEach(b=>b.addEventListener("click",()=>{
+    S.settings.theme=b.dataset.themeSet; save(); applyTheme(); render(); }));
+  document.querySelectorAll("[data-snap]").forEach(b=>b.addEventListener("click",()=>{
+    S.settings.snapEvery=+b.dataset.snap; save(); render(); }));
+  on("#sStart","change",e=>{
+    const v=e.target.value; if(!v) return;
+    const [h,m]=v.split(":").map(Number);
+    const d=new Date(S.raceStart||now()); d.setHours(h,m,0,0);
+    S.raceStart=d.getTime(); S.settings.startTime=v; save(); render();
+    toast("Start set to "+v+" — all bells shifted");
   });
-  sset("#sName","raceName"); sset("#sStart","startTime");
-  sset("#sLaps","targetLaps",v=>parseInt(v,10)||48);
-  sset("#sMiles","lapMiles",v=>parseFloat(v)||4.161);
-  on("#savePlan","click",()=>{
-    S.settings.planText=$("#sPlan").value;
-    PLAN=parsePlan(S.settings.planText);
-    save();
-    const lines=Object.keys(PLAN).length;
-    const unmatched=(S.settings.planText.match(/\n/g)||[]).length+1-lines;
-    $("#planMsg").innerHTML = lines
-      ? `<div class="warn">${lines} lap${lines===1?"":"s"} loaded${unmatched>0?` · ${unmatched} line${unmatched===1?"":"s"} not recognised`:""}.</div>`
-      : `<div class="err">Nothing recognised. Each line needs a lap number first.</div>`;
-  });
+  on("#sLaps","change",e=>{ S.settings.targetLaps=parseInt(e.target.value,10)||48; save(); });
+  document.querySelectorAll("[data-p]").forEach(inp=>inp.addEventListener("change",()=>{
+    const p=S.products[+inp.dataset.p]; p[inp.dataset.k]=parseFloat(inp.value)||0;
+    if(p.unset&&(p.kcal||p.carb||p.na)){ delete p.unset; p.note="edited"; }
+    save(); }));
+
   on("#saveSync","click",()=>{
     S.settings.syncUrl=$("#sUrl").value.trim();
     S.settings.syncSecret=$("#sSec").value.trim();
-    save(); syncBadge(); toast("Sync settings saved");
-  });
+    save(); syncBadge(); toast("Sync settings saved"); });
   on("#mkLink","click",async()=>{
     const u=$("#sUrl").value.trim(), sec=$("#sSec").value.trim();
     if(!u){ $("#syncMsg").innerHTML=`<div class="err">Set the URL first.</div>`; return; }
-    const link = location.origin + location.pathname
-      + "?u=" + encodeURIComponent(u)
-      + (sec?"&s="+encodeURIComponent(sec):"")
-      + (S.settings.planText?"&p="+encodeURIComponent(S.settings.planText):"");
-    try{ await navigator.clipboard.writeText(link); toast("Setup link copied"); }
-    catch(e){ /* fall through to showing it */ }
-    $("#syncMsg").innerHTML =
-      `<div class="warn">Opening this link on another phone sets up sync${S.settings.planText?" and loads the plan":""}. It carries the secret — send it somewhere private, not the repo.</div>
-       <textarea readonly style="min-height:70px;font-size:11px" onclick="this.select()">${link.replace(/</g,"&lt;")}</textarea>`;
+    const link=location.origin+location.pathname+"?u="+encodeURIComponent(u)+(sec?"&s="+encodeURIComponent(sec):"");
+    try{ await navigator.clipboard.writeText(link); toast("Setup link copied"); }catch(e){}
+    $("#syncMsg").innerHTML=`<div class="warn">Opening this on another phone sets up sync. It carries the secret — send it somewhere private.</div>
+      <textarea readonly style="min-height:70px;font-size:11px" onclick="this.select()">${link.replace(/</g,"&lt;")}</textarea>`;
   });
   on("#testSync","click",async()=>{
-    S.settings.syncUrl=$("#sUrl").value.trim();
-    S.settings.syncSecret=$("#sSec").value.trim();
-    save();
+    S.settings.syncUrl=$("#sUrl").value.trim(); S.settings.syncSecret=$("#sSec").value.trim(); save();
     const out=$("#syncMsg");
     if(!S.settings.syncUrl){ out.innerHTML=`<div class="err">No URL.</div>`; return; }
     out.innerHTML=`<p class="hint">Testing…</p>`;
     try{
       const {res,txt,bytes}=await postToSheet(S.settings.syncUrl,S.settings.syncSecret,COLS,[]);
       S.lastSync=`${res.status} · ${bytes}B · ${txt.slice(0,120)}`;
-      let verdict;
-      if(txt.indexOf("OK:")===0) verdict=`<div class="warn" style="color:var(--green);border-color:var(--green)">Working. The sheet answered and wrote 0 test rows.</div>`;
-      else if(/<html/i.test(txt)) verdict=`<div class="err">Google returned HTML, not the script's reply. Redeploy with access set to <b>Anyone</b>.</div>`;
-      else if(/wrong secret/i.test(txt)) verdict=`<div class="err">Wrong secret. The SECRET line in the script doesn't match the box above.</div>`;
-      else verdict=`<div class="err">Unexpected reply — the script may be an old deployment.</div>`;
-      out.innerHTML=verdict+`<p class="hint">HTTP ${res.status} · sent ${bytes} bytes · reply: <span class="mono">${txt.replace(/</g,"&lt;").slice(0,140)}</span></p>
-        <p class="hint">URL in use: <span class="mono" style="word-break:break-all">${S.settings.syncUrl.replace(/</g,"&lt;")}</span></p>`;
+      let v;
+      if(txt.indexOf("OK:")===0) v=`<div class="warn" style="color:var(--green);border-color:var(--green)">Working.</div>`;
+      else if(/<html/i.test(txt)) v=`<div class="err">Google returned HTML. Redeploy with access set to <b>Anyone</b>.</div>`;
+      else if(/wrong secret/i.test(txt)) v=`<div class="err">Wrong secret.</div>`;
+      else v=`<div class="err">Unexpected reply — probably an old deployment.</div>`;
+      out.innerHTML=v+`<p class="hint">HTTP ${res.status} · ${bytes} bytes · <span class="mono">${txt.replace(/</g,"&lt;").slice(0,140)}</span></p>`;
       S.syncErr=""; save();
-    }catch(err){
-      out.innerHTML=`<div class="err">Couldn't reach it: ${String(err.message||err).replace(/</g,"&lt;")}</div>
-        <p class="hint">If you're offline that's expected. If you're online, check the URL ends in <span class="mono">/exec</span> — not <span class="mono">/dev</span>.</p>`;
-    }
+    }catch(err){ out.innerHTML=`<div class="err">Couldn't reach it: ${String(err.message||err).replace(/</g,"&lt;")}</div>
+      <p class="hint">Check the URL ends in <span class="mono">/exec</span>.</p>`; }
   });
-  document.querySelectorAll("[data-p]").forEach(inp=>inp.addEventListener("change",()=>{
-    const p=S.products[+inp.dataset.p];
-    p[inp.dataset.k]=parseFloat(inp.value)||0;
-    if(p.unset && (p.kcal||p.carb||p.na)) { delete p.unset; p.note="edited"; }
-    save();
-  }));
+  on("#updChk","click",async()=>{
+    const out=$("#updMsg");
+    if(S.cur||S.laps.length){ if(!confirm("A race is in progress. Continue?")) return; }
+    out.innerHTML=`<p class="hint">Checking…</p>`;
+    try{
+      if(!swReg){ out.innerHTML=`<div class="err">No service worker.</div>`; return; }
+      await swReg.update();
+      if(swReg.waiting){ out.innerHTML=`<div class="warn">New version ready. <b>Reload twice.</b></div>`; swReg.waiting.postMessage({type:"SKIP_WAITING"}); }
+      else out.innerHTML=`<p class="hint">Already on ${APP_VERSION}.</p>`;
+    }catch(e){ out.innerHTML=`<div class="err">Couldn't check — probably offline.</div>`; }
+  });
 }
 
-/* nav */
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
+  if(S.editN!=null && b.dataset.tab!=="lap") S.editN=null;
   S.tab=b.dataset.tab; save(); render();
-  if(S.tab==="lap" && S.cur) startClock(); else stopClock();
+  if(S.tab==="lap"&&S.cur&&S.editN==null) startClock(); else stopClock();
 }));
 
-/* clock */
 let clockTimer=null;
-function startClock(){
-  stopClock();
-  clockTimer=setInterval(()=>{
-    const el=$("#ct");
-    if(!el||!S.cur){ stopClock(); return; }
-    el.textContent = mmss(now()-S.cur.arrived);
-  },1000);
-}
+function startClock(){ stopClock(); clockTimer=setInterval(()=>{
+  const el=$("#ct"); if(!el||!S.cur||S.editN!=null){ stopClock(); return; }
+  el.textContent=mmss(now()-S.cur.arrived); },1000); }
 function stopClock(){ clearInterval(clockTimer); clockTimer=null; }
 
-/* red flags */
 function showFlags(fromSwelling){
-  const d=document.createElement("div");
-  d.className="scrim";
+  const d=document.createElement("div"); d.className="scrim";
   d.innerHTML=`<div class="modal" role="dialog" aria-modal="true">
     <h3>${fromSwelling?"Swelling logged — read this":"Stop and get medical help"}</h3>
     ${fromSwelling?`<p style="font-size:15px">Swollen hands or fingers alongside a lot of fluid is a hyponatremia sign. <b>Stop plain water now</b> and go to race medical. Don't work around it with the plan.</p>`:""}
@@ -1203,27 +1116,21 @@ function showFlags(fromSwelling){
   d.addEventListener("click",e=>{ if(e.target===d) d.remove(); });
 }
 
-/* sync — queue and drain, never blocking */
+/* ---------- sync ---------- */
 function syncBadge(txt,cls){
-  const b=$("#bSync");
+  const b=$("#bSync"); if(!b) return;
   if(!S.settings.syncUrl){ b.textContent="sync off"; b.className="badge"; return; }
   const q=S.laps.filter(l=>!l.synced).length;
-  b.textContent = txt || (q ? q+" queued" : "synced");
-  b.className = "badge " + (cls || (q ? "" : "on"));
+  b.textContent=txt||(q?q+" queued":"synced");
+  b.className="badge "+(cls||(q?"":"on"));
 }
-/* one code path for both the test and the real send */
-async function postToSheet(url, secret, cols, rows){
-  const body = JSON.stringify({secret, cols, rows});
-  const res = await fetch(url,{
-    method:"POST",
-    redirect:"follow",
-    headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body
-  });
-  const txt = (await res.text()).trim();
-  return {res, txt, bytes: body.length};
+async function postToSheet(url,secret,cols,rows){
+  const body=JSON.stringify({secret,cols,rows});
+  const res=await fetch(url,{method:"POST",redirect:"follow",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},body});
+  const txt=(await res.text()).trim();
+  return {res,txt,bytes:body.length};
 }
-
 let syncing=false;
 async function queueSync(manual){
   if(!S.settings.syncUrl){ if(manual) toast("No sheet URL set"); syncBadge(); return; }
@@ -1232,26 +1139,20 @@ async function queueSync(manual){
   if(syncing) return;
   syncing=true; syncBadge("sending…");
   try{
-    const all=buildCSV().split("\n");
-    const cols=all[0].split(",");
-    const allRows=pending.map(l=>parseCSVLine(all[S.laps.indexOf(l)+1]));
-    // send in small batches — a large body is a plausible cause of a
-    // 404 from Google when a tiny one succeeds
-    const BATCH=10;
-    let done=0, lastBytes=0;
-    for(let i=0;i<allRows.length;i+=BATCH){
-      const slice=allRows.slice(i,i+BATCH);
+    const all=buildCSV().split("\n"), cols=all[0].split(",");
+    const sorted=[...S.laps].sort((a,b)=>a.n-b.n);
+    const rowFor=l=>parseCSVLine(all[sorted.indexOf(l)+1]);
+    const BATCH=10; let done=0,lastBytes=0;
+    for(let i=0;i<pending.length;i+=BATCH){
+      const slice=pending.slice(i,i+BATCH).map(rowFor);
       const {res,txt,bytes}=await postToSheet(S.settings.syncUrl,S.settings.syncSecret,cols,slice);
-      lastBytes=bytes;
-      S.lastSync=`${res.status} · ${bytes}B · ${txt.slice(0,120)}`;
-      if(!res.ok) throw new Error(`HTTP ${res.status} on a ${bytes}-byte send (${slice.length} rows). URL used: ${S.settings.syncUrl}`);
-      if(txt.indexOf("OK:")!==0) throw new Error(
-        /<html/i.test(txt)
-          ? "Google sent HTML, not the script's reply. Redeploy with access set to Anyone."
-          : "Sheet rejected it: "+(txt.slice(0,80)||"empty reply"));
+      lastBytes=bytes; S.lastSync=`${res.status} · ${bytes}B · ${txt.slice(0,120)}`;
+      if(!res.ok) throw new Error(`HTTP ${res.status} on a ${bytes}-byte send (${slice.length} rows)`);
+      if(txt.indexOf("OK:")!==0) throw new Error(/<html/i.test(txt)
+        ? "Google sent HTML, not the script's reply. Redeploy with access set to Anyone."
+        : "Sheet rejected it: "+(txt.slice(0,80)||"empty reply"));
       pending.slice(i,i+BATCH).forEach(l=>l.synced=true);
-      done+=slice.length;
-      save(); syncBadge();
+      done+=slice.length; save(); syncBadge();
     }
     S.syncErr=""; save(); syncBadge();
     if(manual) toast(`Sheet confirmed ${done} row(s) · ${lastBytes}B`);
@@ -1261,56 +1162,32 @@ async function queueSync(manual){
     if(manual) toast(S.syncErr.slice(0,90));
   }finally{ syncing=false; }
 }
-function parseCSVLine(line){
-  const out=[]; let cur="", q=false;
-  for(let i=0;i<line.length;i++){
-    const c=line[i];
-    if(q){
-      if(c==='"'&&line[i+1]==='"'){cur+='"';i++;}
-      else if(c==='"') q=false;
-      else cur+=c;
-    }else{
-      if(c==='"') q=true;
-      else if(c===",") {out.push(cur);cur="";}
-      else cur+=c;
-    }
-  }
-  out.push(cur); return out;
-}
 setInterval(()=>{ if(navigator.onLine) queueSync(false); },90000);
 window.addEventListener("online",()=>queueSync(false));
-
-/* keep the screen honest about unsaved work */
 window.addEventListener("beforeunload",e=>{ if(S.cur){ e.preventDefault(); e.returnValue=""; } });
 
-/* ---- provisioning link: ?u=<script url>&s=<secret> ----
-   Lets a spare phone be set up from one link without the URL or secret
-   ever living in the repo. Consumed once, then wiped from the address
-   bar and from history so it isn't left on screen. */
+/* ---------- provisioning link ---------- */
 (function provision(){
   try{
-    const q = new URLSearchParams(location.search);
-    const u = q.get("u"), sec = q.get("s"), plan = q.get("p");
-    if(!u && !sec && !plan) return;
-    if(u)    S.settings.syncUrl    = decodeURIComponent(u);
-    if(sec)  S.settings.syncSecret = decodeURIComponent(sec);
-    if(plan){ S.settings.planText  = decodeURIComponent(plan); PLAN = parsePlan(S.settings.planText); }
+    const q=new URLSearchParams(location.search);
+    const u=q.get("u"), sec=q.get("s");
+    if(!u&&!sec) return;
+    if(u) S.settings.syncUrl=decodeURIComponent(u);
+    if(sec) S.settings.syncSecret=decodeURIComponent(sec);
     lsSave(S); idbSave(S);
     history.replaceState(null,"",location.pathname);
-    S.provisioned = [u?"sheet URL":null, sec?"secret":null, plan?"plan":null].filter(Boolean).join(", ");
+    S.provisioned=[u?"sheet URL":null,sec?"secret":null].filter(Boolean).join(", ");
   }catch(e){}
 })();
 
-/* boot */
+/* ---------- boot ---------- */
 applyTheme();
-persistOK = lsSave(S);
+persistOK=lsSave(S);
 render();
 if(S.provisioned){ toast("Set up from link: "+S.provisioned); delete S.provisioned; save(); }
-if(S.cur) startClock();
+if(S.cur&&S.editN==null) startClock();
 syncBadge();
-const b=$("#bSave");
-b.textContent = persistOK ? "saved" : "no storage";
-b.className = "badge " + (persistOK?"on":"off");
+(function(){ const b=$("#bSave"); b.textContent=persistOK?"saved":"no storage"; b.className="badge "+(persistOK?"on":"off"); })();
 </script>
 </body>
 </html>
