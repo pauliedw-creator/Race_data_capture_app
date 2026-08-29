@@ -159,6 +159,7 @@ textarea{min-height:70px;resize:vertical}
 input[type=time]{min-height:var(--tap);font-size:20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}
 input[type=time]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.9;cursor:pointer;width:22px;height:22px;padding:4px}
 [data-theme="light"] input[type=time]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
+.latebar{margin-top:12px;padding:12px;border:1px solid var(--amber);border-radius:var(--r);background:var(--sel-bg);color:var(--amber);font-size:13px;text-align:center;letter-spacing:.04em;font-weight:600}
 .nudge{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:10px}
 .nudge button{min-height:46px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2);font-size:14px;font-weight:600}
 .nudge button:active{background:var(--amber);color:var(--on-amber)}
@@ -238,7 +239,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-const APP_VERSION = "3.1.0";
+const APP_VERSION = "3.3.0";
 
 /* ============================================================
    RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx.
@@ -303,6 +304,7 @@ const PORTIONS=[{q:0.25,l:"¼"},{q:0.5,l:"½"},{q:0.75,l:"¾"},{q:1,l:"1"},{q:1.
 const SYMPTOMS=["Bloating","Nausea","Stomach cramp","Muscle cramp","Heat","Cold","Dizzy","Sleepy"];
 const TOILET=["None","Wee","BM","Urgent BM"];
 const MAINT=["Lube","Feet check","Socks","Charge"];
+const WEATHER=["Dry","Drizzle","Rain","Heavy rain","Wind","Fog","Sun","Part cloud","Full cloud"];
 
 /* ---------- state ---------- */
 const BLANK_SETTINGS={ startTime:RACE_META.defaultStart, targetLaps:RACE_META.laps,
@@ -320,6 +322,7 @@ function blankLap(n){
   return { n, arrived:null,
     course:blankSection(), camp:blankSection(),
     gut:null, mood:carried("mood",null), legs:carried("legs",null), layers:carried("layers",null),
+    temp:carried("temp",null), wx:(carried("wx",null)||[]).slice(),
     toilet:"None", symptoms:[], symOther:"", maint:[], notes:"",
     newOnsets:[], swell:null, synced:false };
 }
@@ -478,7 +481,7 @@ function viewLap(){
     <div class="clock ${ed?"":"live"}" id="clock">
       <div class="pulse"></div>
       <div class="t mono" id="ct">${ed?mmss(campMs(l)):"––:––"}</div>
-      <div class="lbl">${ed?"Was in camp":"Until the bell"}</div>
+      <div class="lbl" id="clbl">${ed?"Was in camp":"Until the bell"}</div>
       <div class="sub">${S.raceStart
         ? `Lap ${l.n} bell ${hhmm(whistle(l.n))} · in at ${hhmm(l.arrived)} · lap ${mins(lapRunMs(l))||"—"} min · next bell ${hhmm(bellNext)}`
         : "No race start set"}</div>
@@ -487,22 +490,21 @@ function viewLap(){
       ${ed?`<button class="big ghost" id="delLap">Delete hour</button><button class="big primary" id="doneEdit">Done</button>`
           :`<button class="big ghost" id="undoIn">Cancel</button><button class="big primary" id="btnSubmit">Submit hour ${l.n}</button>`}
     </div>
+    ${(!ed && bellNext && now()>bellNext) ? `<div class="latebar">
+      She's out on lap ${l.n+1} — the ${hhmm(bellNext)} bell has gone
+      <button class="big" id="btnNext" style="width:100%;margin-top:10px">Submit and open hour ${l.n+1}</button>
+    </div>`:""}
   </section>
 
   <section class="card">
     <p class="eyebrow">Arrival time</p>
     <input type="time" id="tIn" step="60" value="${hhmm(l.arrived)}">
-    <div class="nudge">
-      <button data-nudge="-5">−5 min</button>
-      <button data-nudge="-1">−1 min</button>
-      <button data-nudge="1">+1 min</button>
-      <button data-nudge="5">+5 min</button>
-    </div>
-    <div class="nudge">
-      <button data-setnow="1">Set to now (${hhmm(Date.now())})</button>
-      <button data-setbell="1">Set to bell +51 (${hhmm((whistle(l.n)||0)+51*60000)})</button>
-    </div>
-    <p class="legend">She leaves on the bell, so camp time is worked out from this. Type it, use the arrows, or nudge it.</p>
+    ${l.arrived==null
+      ? `<div class="err">Not recorded. Type the time she came in — lap and camp times depend on it.</div>`
+      : (campMs(l)!=null && campMs(l)<0
+        ? `<div class="err">That's after the ${hhmm(whistle(l.n+1))} bell. Check it.</div>`
+        : "")}
+    <p class="legend">She leaves on the bell, so camp time is worked out from this.</p>
   </section>
 
   ${pnotes.length?`<section class="card"><p class="eyebrow">Plan notes for this hour</p>${pnotes.map(n=>`<p class="pnote">${n}</p>`).join("")}</section>`:""}
@@ -537,6 +539,16 @@ function viewLap(){
       <button data-swell="no" aria-pressed="${l.swell==='no'}">Normal</button>
       <button data-swell="yes" aria-pressed="${l.swell==='yes'}">Swollen</button>
     </div>
+  </section>
+
+  <section class="card">
+    <p class="eyebrow">Conditions <span class="carry">carries over</span></p>
+    <label class="f" style="margin-top:0">Temperature °C</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="number" id="temp" inputmode="decimal" step="0.5" value="${l.temp??""}" placeholder="—" style="font-size:22px;text-align:center;font-family:ui-monospace,monospace">
+    </div>
+    <p class="sublabel" style="margin-top:16px">What it's doing</p>
+    <div class="sym">${WEATHER.map(w=>`<button data-wx="${w}" aria-pressed="${(l.wx||[]).includes(w)}">${w}</button>`).join("")}</div>
   </section>
 
   <section class="card">
@@ -606,16 +618,6 @@ function startPanel(){
   return `<section class="card" style="border-color:var(--amber)">
     <p class="eyebrow">What time did the bell go for lap 1?</p>
     <input type="time" id="tStart" step="60" value="${hhmm(d)}">
-    <div class="nudge">
-      <button data-sn="-5">−5 min</button>
-      <button data-sn="-1">−1 min</button>
-      <button data-sn="1">+1 min</button>
-      <button data-sn="5">+5 min</button>
-    </div>
-    <div class="nudge">
-      <button data-sdefault="1">Planned (${RACE_META.defaultStart})</button>
-      <button data-snow="1">Now (${hhmm(Date.now())})</button>
-    </div>
     <p class="legend">Every later bell is this time plus whole hours. You can still correct it in Setup afterwards.</p>
     <div class="bigrow">
       <button class="big ghost" id="cancelStart">Cancel</button>
@@ -683,7 +685,7 @@ function viewLog(){
       <span class="n mono">${l.n}</span>
       <span class="m">
         <span class="a"><span class="dot" style="background:${gc}"></span>${all.length?all.join(", "):"nothing logged"}</span>
-        <span class="b mono">in ${hhmm(l.arrived)} · lap ${mins(lapRunMs(l))||"—"} · ${round(t.kcal)}/${tgt.kcal} kcal <span style="color:${kd>=-30?"var(--green)":"var(--red)"}">${signed(kd)}</span>${l.symptoms.length||l.symOther?" · "+l.symptoms.concat(l.symOther?[l.symOther]:[]).join(", "):""}</span>
+        <span class="b mono">in ${hhmm(l.arrived)} · lap ${mins(lapRunMs(l))||"—"}${l.temp!=null?" · "+l.temp+"°":""} · ${round(t.kcal)}/${tgt.kcal} kcal <span style="color:${kd>=-30?"var(--green)":"var(--red)"}">${signed(kd)}</span>${l.symptoms.length||l.symOther?" · "+l.symptoms.concat(l.symOther?[l.symOther]:[]).join(", "):""}</span>
       </span>
       <span class="d mono">${mmss(campMs(l))}</span>
     </button>`;}).join("");
@@ -702,7 +704,7 @@ const COLS=["lap","bell","arrived","lap_min","camp_min",
  "refused","other",
  "kcal","carb_g","sodium_mg","fluid_ml","caffeine_mg",
  "plan_kcal","plan_carb_g","plan_sodium_mg","plan_fluid_ml",
- "gut","mood","legs","layers","toilet","swelling","symptoms","symptom_other",
+ "temp_c","conditions","gut","mood","legs","layers","toilet","swelling","symptoms","symptom_other",
  "new_onsets","maintenance","notes","flags"];
 function csvCell(v){ v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function foodStr(sec){ return Object.keys(sec.items).filter(k=>sec.items[k].s===1)
@@ -720,6 +722,7 @@ function buildCSV(){
       refusedStr(l), (l.course.extra||[]).concat(l.camp.extra||[]).join("; "),
       round(t.kcal),round(t.carb),round(t.na),round(t.ml),round(t.caf),
       g.kcal,g.carb,g.na,g.ml,
+      l.temp??"",(l.wx||[]).join("; "),
       l.gut??"",l.mood??"",l.legs??"",l.layers??"",l.toilet||"",l.swell||"",
       l.symptoms.join("; "),l.symOther||"",l.newOnsets.join("; "),l.maint.join("; "),
       (l.notes||"").replace(/\n/g," "),flags].map(csvCell).join(","));
@@ -761,6 +764,8 @@ function importCSV(text){
       const id=byName(nm); if(id) l.camp.items[id]={s:2,q:1}; });
     g("other").split(";").map(x=>x.trim()).filter(Boolean).forEach(x=>l.camp.extra.push(x));
     const num=v=>v===""?null:(isNaN(+v)?v:+v);
+    l.temp=g("temp_c")===""?null:parseFloat(g("temp_c"));
+    l.wx=g("conditions").split(";").map(x=>x.trim()).filter(Boolean);
     l.gut=num(g("gut")); l.mood=num(g("mood")); l.legs=num(g("legs"));
     l.layers=g("layers")||null; l.toilet=g("toilet")||"None"; l.swell=g("swelling")||null;
     l.symptoms=g("symptoms").split(";").map(x=>x.trim()).filter(Boolean);
@@ -980,19 +985,21 @@ function bind(){
     const d=new Date(S.startDraft||now()); d.setHours(h,m,0,0);
     S.startDraft=d.getTime(); save(); render();
   });
-  document.querySelectorAll("[data-sn]").forEach(b=>b.addEventListener("click",()=>{
-    S.startDraft=(S.startDraft||defaultStartTs())+(+b.dataset.sn)*60000; save(); render(); }));
-  document.querySelectorAll("[data-sdefault]").forEach(b=>b.addEventListener("click",()=>{
-    S.startDraft=defaultStartTs(); save(); render(); }));
-  document.querySelectorAll("[data-snow]").forEach(b=>b.addEventListener("click",()=>{
-    const d=new Date(); d.setSeconds(0,0); S.startDraft=d.getTime(); save(); render(); }));
   on("#confirmStart","click",()=>{
     S.raceStart=S.startDraft||defaultStartTs();
     S.startPending=false; S.startDraft=null; S.nextLap=1; S.raceEnd=null;
     save(); render(); tickClock();
     toast("Bell 1 at "+hhmm(S.raceStart)+" — every lap on the hour from here");
   });
-  on("#btnIn","click",()=>{ S.cur=blankLap(S.nextLap); S.cur.arrived=now(); save(); render(); startClock(); });
+  on("#btnIn","click",()=>{
+    const l=blankLap(S.nextLap);
+    const nextBell=whistle(l.n+1);
+    // If the next bell has already gone, she left before this got opened —
+    // stamping now() would record a false arrival. Leave it blank instead.
+    l.arrived = (nextBell && now()>nextBell) ? null : now();
+    S.cur=l; save(); render(); tickClock();
+    if(l.arrived==null) toast("Logging after the bell — enter her arrival time");
+  });
   on("#undoIn","click",()=>{ if(confirm("Discard this hour's capture?")){ S.cur=null; save(); render(); } });
 
   const submit=()=>{
@@ -1003,6 +1010,15 @@ function bind(){
     toast(`Hour ${l.n} submitted · ${mmss(campMs(l))} to the bell`);
   };
   on("#btnSubmit","click",submit); on("#btnSubmit2","click",submit);
+  on("#btnNext","click",()=>{
+    const n=S.cur?S.cur.n:0;
+    submit();
+    const l=blankLap(n+1);
+    const nb=whistle(l.n+1);
+    l.arrived=(nb && now()>nb)?null:now();
+    S.cur=l; save(); render(); tickClock();
+    toast(`Hour ${n} submitted — now logging hour ${l.n}`);
+  });
 
   const doneEdit=()=>{ const l=activeLap(); if(l) l.synced=false;
     S.editN=null; S.tab="log"; save(); snapshot(null,false); queueSync(); render(); toast("Hour updated"); };
@@ -1025,14 +1041,6 @@ function bind(){
   if(L){
     on("#tIn","change",e=>{ setArrival(L,e.target.value); save(); render(); });
     on("#tIn","input",e=>{ if(e.target.value&&e.target.value.length===5){ setArrival(L,e.target.value); save(); } });
-    document.querySelectorAll("[data-nudge]").forEach(b=>b.addEventListener("click",()=>{
-      const base=L.arrived||whistle(L.n)||now();
-      L.arrived=base+(+b.dataset.nudge)*60000; save(); render(); }));
-    document.querySelectorAll("[data-setnow]").forEach(b=>b.addEventListener("click",()=>{
-      L.arrived=now(); save(); render(); toast("Arrival set to "+hhmm(L.arrived)); }));
-    document.querySelectorAll("[data-setbell]").forEach(b=>b.addEventListener("click",()=>{
-      const w=whistle(L.n); if(!w){ toast("No race start set"); return; }
-      L.arrived=w+51*60000; save(); render(); toast("Arrival set to "+hhmm(L.arrived)); }));
 
     document.querySelectorAll("[data-drink]").forEach(b=>b.addEventListener("click",()=>{
       const sec=L[b.dataset.drink], id=b.dataset.id;
@@ -1073,6 +1081,10 @@ function bind(){
       if(i>=0) L.maint.splice(i,1); else L.maint.push(m); save(); render(); }));
     document.querySelectorAll("[data-swell]").forEach(b=>b.addEventListener("click",()=>{
       L.swell=b.dataset.swell; save(); render(); if(b.dataset.swell==="yes") showFlags(true); }));
+    on("#temp","input",e=>{ const v=e.target.value; L.temp=(v===""?null:parseFloat(v)); save(); });
+    document.querySelectorAll("[data-wx]").forEach(b=>b.addEventListener("click",()=>{
+      L.wx=L.wx||[]; const w=b.dataset.wx, i=L.wx.indexOf(w);
+      if(i>=0) L.wx.splice(i,1); else L.wx.push(w); save(); render(); }));
     on("#notes","input",e=>{ L.notes=e.target.value; save(); });
   }
 
@@ -1185,10 +1197,18 @@ function paintClock(){
   const el=$("#ct"); if(!el){ clearInterval(clockTimer); return; }
   if(S.cur){
     const b=whistle(S.cur.n+1);
+    const lbl=$("#clbl");
     if(b){ const left=b-now();
-      el.textContent=(left<0?"-":"")+mmss(Math.abs(left));
-      el.style.color = left<0 ? "var(--red)" : (left<120000 ? "var(--red)" : "");
-    } else el.textContent=mmss(now()-S.cur.arrived);
+      if(left>=0){
+        el.textContent=mmss(left);
+        el.style.color = left<120000 ? "var(--red)" : "";
+        if(lbl) lbl.textContent="Until the bell";
+      } else {
+        el.textContent=mmss(now()-b);
+        el.style.color="";
+        if(lbl) lbl.textContent="She's been out";
+      }
+    } else el.textContent=mmss(now()-(S.cur.arrived||now()));
   } else if(S.raceStart){
     el.textContent=mmss(now()-whistle(S.nextLap));
   }
