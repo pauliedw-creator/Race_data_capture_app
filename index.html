@@ -156,6 +156,12 @@ textarea,input[type=text],input[type=time],input[type=number],input[type=url]{
   color:var(--text);padding:12px;font:inherit
 }
 textarea{min-height:70px;resize:vertical}
+input[type=time]{min-height:var(--tap);font-size:20px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}
+input[type=time]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.9;cursor:pointer;width:22px;height:22px;padding:4px}
+[data-theme="light"] input[type=time]::-webkit-calendar-picker-indicator{filter:none;opacity:.7}
+.nudge{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px;margin-top:10px}
+.nudge button{min-height:46px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2);font-size:14px;font-weight:600}
+.nudge button:active{background:var(--amber);color:var(--on-amber)}
 label.f{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px;font-weight:600}
 
 /* ---- nav ---- */
@@ -200,6 +206,10 @@ details{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;ma
 summary{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;cursor:pointer}
 pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font-size:11px;color:var(--muted)}
 
+
+.strap{font-size:12px;color:var(--muted);margin:-4px 0 12px;line-height:1.4}
+.sublabel{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 8px}
+.sectot{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--amber);text-align:right}
 .portions{flex:1 1 100%;margin:-2px 0 4px;padding:8px 10px;border:1px solid var(--line);border-left:3px solid var(--amber);border-radius:var(--r);background:var(--panel-2)}
 .portions .plabel{display:block;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:600}
 .editbar{background:var(--sel-bg);border:1px solid var(--amber);color:var(--amber);border-radius:var(--r);padding:10px 12px;margin-bottom:14px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:650;text-align:center}
@@ -211,335 +221,294 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 </style></head>
 <body>
-
 <header>
-  <div class="lapno">Lap <b id="hLap">1</b> <span id="hOf" style="color:var(--muted)">/ 48</span></div>
+  <div class="lapno">Hour <b id="hLap">1</b> <span id="hOf" style="color:var(--muted)">/ 48</span></div>
   <div style="display:flex;gap:6px">
     <span class="badge" id="bSave">saving…</span>
     <span class="badge" id="bSync">sync off</span>
   </div>
 </header>
-
 <main id="view"></main>
-
 <nav>
-  <button data-tab="lap" aria-current="true"><span class="n">◉</span>Lap</button>
+  <button data-tab="lap" aria-current="true"><span class="n">◉</span>Hour</button>
   <button data-tab="log"><span class="n">≡</span>Log</button>
   <button data-tab="out"><span class="n">↥</span>Export</button>
   <button data-tab="set"><span class="n">⚙</span>Setup</button>
 </nav>
-
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-const APP_VERSION = "2.0.0";
+const APP_VERSION = "3.0.1";
 
 /* ============================================================
-   RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx,
-   Plan sheet. Baked into the code so it travels with the app to any
-   device. c = chips [productId, portion]; t = per-lap targets;
-   n = notes from the plan; d = cumulative miles.
+   RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx.
+   c = [productId, portion]; t = per-hour targets; n = plan notes.
    ============================================================ */
 const RACE_PLAN = {"1":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["BELL 10:00. Target 51 min - do NOT chase 45. POWER-HIKE the 0.8km hill from THIS lap.","Calf sleeves or long socks ON from the start - vegetation protection"],"d":4.2},"2":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":["Portaloos are ON the loop at the car park, ~5.5km (4/5 round). Use them - do not hold on to camp."],"d":8.3},"3":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["Warm up lube"],"d":12.5},"4":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Warmest laps 4-8. Sip plain water at camp if thirsty - do not add to bottle."],"d":16.6},"5":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":[],"d":20.8},"6":{"c":[["gel",1],["muller",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":570,"carb":81},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)"],"d":25.0},"7":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":[],"d":29.1},"8":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Quick-charge watch + lamp"],"d":33.3},"9":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["Warm up lube","LAYER UP BEFORE DARK - core warmth is a fuelling issue, not comfort."],"d":37.4},"10":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":[],"d":41.6},"11":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["HEADLAMP ON. WALK the rooted descent at 1.5-1.95km from now until daylight."],"d":45.8},"12":{"c":[["gel",1],["turkish",1],["skratch",1]],"t":{"kcal":292,"ml":500,"na":420,"carb":73},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes) | FULL DRY-OUT: socks off, dry, re-lube, check tape, inspect ankles for abrasion","Night 1 begins. Cold suppresses thirst: finish the bottle anyway."],"d":49.9},"13":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Kendal Mint Cake/Turkish Delight on odd laps: calories without extra fluid in the cold."],"d":54.1},"14":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":[],"d":58.3},"15":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["Warm up lube"],"d":62.4},"16":{"c":[["gel",1],["richtea",1.5],["skratch",1]],"t":{"kcal":333,"ml":500,"na":420,"carb":69},"n":["Quick-charge watch + lamp","Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":66.6},"17":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":["Caffeine chew 80mg (AFTER any nap, not before) | Circadian trough 02:00-05:00. Her first hard lap has historically been ~hr 17."],"d":70.7},"18":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)"],"d":74.9},"19":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Caffeine chew 80mg (AFTER any nap, not before)"],"d":79.1},"20":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":83.2},"21":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":["HEADLAMP OFF - daylight. Rooted descent runnable again.","Warm up lube"],"d":87.4},"22":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":[],"d":91.5},"23":{"c":[["tailwind",1]],"t":{"kcal":200,"ml":500,"na":600,"carb":50},"n":[],"d":95.7},"24":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Quick-charge watch + lamp | Swap to 2nd headlamp battery set","FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes) | FULL DRY-OUT: socks off, dry, re-lube, check tape, inspect ankles for abrasion","DECISION POINT: hrs 24-26 is her documented crisis window. Company on this lap."],"d":99.9},"25":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["Coke joins odd laps from here = the proven Sherwood liquid protocol. New taste on purpose."],"d":104.0},"26":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":[],"d":108.2},"27":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["Warm up lube"],"d":112.3},"28":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":[],"d":116.5},"29":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":[],"d":120.7},"30":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)","Past all but one race in the dataset. Everything from here is new ground."],"d":124.8},"31":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["NAP WINDOW OPENS: if lap comes in under 53 min, 5 min eyes-shut in the chair."],"d":129.0},"32":{"c":[["gel",1],["turkish",1],["skratch",1]],"t":{"kcal":292,"ml":500,"na":420,"carb":73},"n":["Quick-charge watch + lamp"],"d":133.2},"33":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":["Warm up lube","LAYER UP BEFORE DARK (night 2)."],"d":137.3},"34":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":[],"d":141.5},"35":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["HEADLAMP ON (night 2) - fresh lamp + charged spare. WALK the rooted descent."],"d":145.6},"36":{"c":[["gel",1],["richtea",1.5],["skratch",1]],"t":{"kcal":333,"ml":500,"na":420,"carb":69},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes) | FULL DRY-OUT: socks off, dry, re-lube, check tape, inspect ankles for abrasion","Longest she has ever been on feet was 30 hrs. Crew script: one lap at a time only. | Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":149.8},"37":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":[],"d":154.0},"38":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":[],"d":158.1},"39":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Warm up lube","NAP: 5 min, timer set by Paul, no negotiation on getting up. WALK the roots after any nap."],"d":162.3},"40":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Quick-charge watch + lamp","Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":166.4},"41":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":["Caffeine chew 80mg (AFTER any nap, not before)"],"d":170.6},"42":{"c":[["gel",1],["richtea",1],["skratch",1]],"t":{"kcal":290,"ml":500,"na":420,"carb":63},"n":["FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)"],"d":174.8},"43":{"c":[["tailwind",1],["kendal",1]],"t":{"kcal":278,"ml":500,"na":600,"carb":67},"n":["Caffeine chew 80mg (AFTER any nap, not before) | NAP: 5 min. Micro-sleep risk while moving - walk the rooted descent AND the steps at 4.2km."],"d":178.9},"44":{"c":[["gel",1],["richtea",1.5],["skratch",1]],"t":{"kcal":333,"ml":500,"na":420,"carb":69},"n":["Soup withdrawn from library - substituted. Hot drink from camp here if available."],"d":183.1},"45":{"c":[["tailwind",1],["turkish",1]],"t":{"kcal":288,"ml":500,"na":600,"carb":72},"n":["HEADLAMP OFF - daylight","Warm up lube"],"d":187.2},"46":{"c":[["gel",1],["banana",1],["skratch",1]],"t":{"kcal":309,"ml":500,"na":421,"carb":78},"n":["Final 3. Daylight, caffeine available, tell her the number."],"d":191.4},"47":{"c":[["tailwind",1],["coke",0.75]],"t":{"kcal":263,"ml":650,"na":615,"carb":66},"n":[],"d":195.6},"48":{"c":[["gel",1],["digestive",1],["skratch",1]],"t":{"kcal":374,"ml":500,"na":510,"carb":73},"n":["Quick-charge watch + lamp","FEET CHECK + lube ankles/shins (sharp grass at 5.5-6.0km, 48 passes)","199.7 miles. Bell 09:00, in the corral by 09:00 sharp."],"d":199.7}};
-const RACE_META = {
-  name: "Rasselbock Backyard — Hardwick Hall",
-  date: "2026-09-05",
-  defaultStart: "10:00",
-  laps: 48,
-  lapMiles: 4.161,
-  planVersion: "v3"
-};
-function planFor(n){ return RACE_PLAN[n] || null; }
-function plannedChips(n){ const p=planFor(n); return p ? p.c.map(x=>x[0]) : []; }
-function plannedQty(n,id){ const p=planFor(n); if(!p) return 1; const f=p.c.find(x=>x[0]===id); return f?f[1]:1; }
+const RACE_META = { name:"Rasselbock Backyard — Hardwick Hall", date:"2026-09-05",
+  defaultStart:"10:00", laps:48, lapMiles:4.161, planVersion:"v3" };
+function planFor(n){ return RACE_PLAN[n]||null; }
 function planTarget(n){ return (planFor(n)||{t:{kcal:0,carb:0,na:0,ml:0}}).t; }
+function plannedQty(n,id){ const p=planFor(n); if(!p) return 1; const f=p.c.find(x=>x[0]===id); return f?f[1]:1; }
+/* the plan's drink belongs on course; its solids are eaten in camp */
+function plannedCourse(n){ const p=planFor(n); return p?p.c.filter(x=>{const q=prod(x[0]);return q&&q.drink;}).map(x=>x[0]):[]; }
+function plannedCamp(n){ const p=planFor(n); return p?p.c.filter(x=>{const q=prod(x[0]);return q&&!q.drink;}).map(x=>x[0]):[]; }
 
-/* ---- theme ---- */
 function applyTheme(){
-  const pick = (S && S.settings && S.settings.theme) || "dark";
-  const eff = pick==="auto"
-    ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-    : pick;
-  document.documentElement.setAttribute("data-theme", eff);
+  const pick=(S&&S.settings&&S.settings.theme)||"dark";
+  const eff=pick==="auto"?(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):pick;
+  document.documentElement.setAttribute("data-theme",eff);
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m) m.setAttribute("content", eff==="light" ? "#F5F2EC" : "#12100E");
+  if(m) m.setAttribute("content",eff==="light"?"#F5F2EC":"#12100E");
 }
-try{
-  window.matchMedia("(prefers-color-scheme: light)")
-    .addEventListener("change",()=>{ if(S.settings.theme==="auto") applyTheme(); });
-}catch(e){}
+try{ window.matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{ if(S.settings.theme==="auto") applyTheme(); }); }catch(e){}
 
-/* ---- persistent storage + service worker ---- */
 (async()=>{ try{ if(navigator.storage&&navigator.storage.persist) await navigator.storage.persist(); }catch(e){} })();
 let swReg=null;
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>{swReg=r;}).catch(()=>{});
-}
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>{swReg=r;}).catch(()=>{}); }
 
-/* ============================================================
-   STORAGE
-   ============================================================ */
-const KEY = "backyard-lap-log-v2";
-let persistOK = false;
-function lsSave(o){ try{ localStorage.setItem(KEY, JSON.stringify(o)); return true; }catch(e){ return false; } }
-function lsLoad(){ try{ const r=localStorage.getItem(KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+/* ---------- storage ---------- */
+const KEY="backyard-lap-log-v3";
+let persistOK=false;
+function lsSave(o){ try{ localStorage.setItem(KEY,JSON.stringify(o)); return true; }catch(e){ return false; } }
+function lsLoad(){ try{ const r=localStorage.getItem(KEY)||localStorage.getItem("backyard-lap-log-v2"); return r?JSON.parse(r):null; }catch(e){ return null; } }
 let idb=null;
-(function(){ try{
-  const rq=indexedDB.open("backyardLapLog",1);
+(function(){ try{ const rq=indexedDB.open("backyardLapLog",1);
   rq.onupgradeneeded=e=>{ e.target.result.createObjectStore("kv"); };
-  rq.onsuccess=e=>{ idb=e.target.result; };
-  rq.onerror=()=>{ idb=null; };
+  rq.onsuccess=e=>{ idb=e.target.result; }; rq.onerror=()=>{ idb=null; };
 }catch(e){ idb=null; } })();
 function idbSave(o){ try{ if(!idb) return; idb.transaction("kv","readwrite").objectStore("kv").put(JSON.stringify(o),KEY); }catch(e){} }
 
-/* ============================================================
-   PRODUCTS
-   ============================================================ */
-const DEFAULT_PRODUCTS = [
-  {id:"tailwind",  name:"Tailwind",        note:"2 scoops / 500ml", kcal:200, carb:50, na:600, caf:0,  ml:500, drink:true},
-  {id:"tailwindC", name:"Tailwind caff",   note:"2 scoops / 500ml", kcal:200, carb:50, na:600, caf:70, ml:500, drink:true},
-  {id:"skratch",   name:"Skratch",         note:"1 scoop / 500ml",  kcal:80,  carb:21, na:380, caf:0,  ml:500, drink:true},
-  {id:"barefuel",  name:"BareFuel",        note:"VALUES NOT SET",   kcal:0,   carb:0,  na:0,   caf:0,  ml:500, drink:true, unset:true},
-  {id:"water",     name:"Water",           note:"500ml",            kcal:0,   carb:0,  na:0,   caf:0,  ml:500, drink:true},
-  {id:"tea",       name:"Tea",             note:"camp mug",         kcal:20,  carb:3,  na:10,  caf:40, ml:250, drink:true, est:true},
-  {id:"coke",      name:"Coke",            note:"200ml",            kcal:84,  carb:21, na:20,  caf:19, ml:200, drink:true},
-  {id:"gel",       name:"Gel",             note:"Active Root",      kcal:124, carb:30, na:40,  caf:0,  ml:0},
-  {id:"digestive", name:"Choc digestives", note:"x2",               kcal:170, carb:22, na:90,  caf:0,  ml:0},
-  {id:"banana",    name:"Banana",          note:"1",                kcal:105, carb:27, na:1,   caf:0,  ml:0},
-  {id:"muller",    name:"Müller Rice",     note:"1 pot",            kcal:180, carb:30, na:150, caf:0,  ml:0, est:true},
-  {id:"kendal",    name:"Kendal mint",     note:"half bar 20g",     kcal:80,  carb:17, na:0,   caf:0,  ml:0, est:true},
-  {id:"turkish",   name:"Turkish delight", note:"3 cubes",          kcal:88,  carb:22, na:0,   caf:0,  ml:0, est:true},
-  {id:"richtea",   name:"Rich tea",        note:"x2",               kcal:86,  carb:12, na:0,   caf:0,  ml:0},
-  {id:"soup",      name:"Soup + bread",    note:"camp",             kcal:150, carb:16, na:500, caf:0,  ml:150, est:true},
-  {id:"chew",      name:"Caffeine chew",   note:"Brain Bullet 80mg",kcal:0,   carb:0,  na:0,   caf:80, ml:0}
+/* ---------- products ---------- */
+const DEFAULT_PRODUCTS=[
+  {id:"tailwind",  name:"Tailwind",        note:"2 scoops / 500ml", kcal:200,carb:50,na:600,caf:0, ml:500,drink:true},
+  {id:"tailwindC", name:"Tailwind caff",   note:"2 scoops / 500ml", kcal:200,carb:50,na:600,caf:70,ml:500,drink:true},
+  {id:"skratch",   name:"Skratch",         note:"1 scoop / 500ml",  kcal:80, carb:21,na:380,caf:0, ml:500,drink:true},
+  {id:"barefuel",  name:"BareFuel",        note:"VALUES NOT SET",   kcal:0,  carb:0, na:0,  caf:0, ml:500,drink:true,unset:true},
+  {id:"water",     name:"Water",           note:"500ml",            kcal:0,  carb:0, na:0,  caf:0, ml:500,drink:true},
+  {id:"tea",       name:"Tea",             note:"camp mug",         kcal:20, carb:3, na:10, caf:40,ml:250,drink:true,est:true},
+  {id:"coke",      name:"Coke",            note:"200ml",            kcal:84, carb:21,na:20, caf:19,ml:200,drink:true},
+  {id:"gel",       name:"Gel",             note:"Active Root",      kcal:124,carb:30,na:40, caf:0, ml:0},
+  {id:"digestive", name:"Choc digestives", note:"x2",               kcal:170,carb:22,na:90, caf:0, ml:0},
+  {id:"banana",    name:"Banana",          note:"1",                kcal:105,carb:27,na:1,  caf:0, ml:0},
+  {id:"muller",    name:"Müller Rice",     note:"1 pot",            kcal:180,carb:30,na:150,caf:0, ml:0,est:true},
+  {id:"kendal",    name:"Kendal mint",     note:"half bar 20g",     kcal:80, carb:17,na:0,  caf:0, ml:0,est:true},
+  {id:"turkish",   name:"Turkish delight", note:"3 cubes",          kcal:88, carb:22,na:0,  caf:0, ml:0,est:true},
+  {id:"richtea",   name:"Rich tea",        note:"x2",               kcal:86, carb:12,na:0,  caf:0, ml:0},
+  {id:"soup",      name:"Soup + bread",    note:"camp",             kcal:150,carb:16,na:500,caf:0, ml:150,est:true},
+  {id:"chew",      name:"Caffeine chew",   note:"Brain Bullet 80mg",kcal:0,  carb:0, na:0,  caf:80,ml:0}
 ];
+const AMOUNTS=[{k:"none",label:"None",f:0},{k:"lit",label:"Little",f:.25},{k:"half",label:"Half",f:.5},{k:"most",label:"Most",f:.75},{k:"all",label:"All",f:1}];
+const PORTIONS=[{q:0.25,l:"¼"},{q:0.5,l:"½"},{q:0.75,l:"¾"},{q:1,l:"1"},{q:1.5,l:"1½"},{q:2,l:"2"}];
+const SYMPTOMS=["Bloating","Nausea","Stomach cramp","Muscle cramp","Heat","Cold","Dizzy","Sleepy"];
+const TOILET=["None","Wee","BM","Urgent BM"];
+const MAINT=["Lube","Feet check","Socks","Charge"];
 
-const AMOUNTS  = [{k:"none",label:"None",f:0},{k:"lit",label:"Little",f:.25},{k:"half",label:"Half",f:.5},{k:"most",label:"Most",f:.75},{k:"all",label:"All",f:1}];
-const PORTIONS = [{q:0.25,l:"¼"},{q:0.5,l:"½"},{q:0.75,l:"¾"},{q:1,l:"1"},{q:1.5,l:"1½"},{q:2,l:"2"}];
-const SYMPTOMS = ["Bloating","Nausea","Stomach cramp","Muscle cramp","Heat","Cold","Dizzy","Sleepy"];
-const TOILET   = ["None","Wee","BM","Urgent BM"];
-const MAINT    = ["Lube","Feet check","Socks","Charge"];
-
-/* ============================================================
-   STATE
-   ============================================================ */
-const BLANK_SETTINGS = {
-  startTime: RACE_META.defaultStart,
-  targetLaps: RACE_META.laps,
-  lapMiles: RACE_META.lapMiles,
-  syncUrl:"", syncSecret:"", snapEvery:1, theme:"dark"
-};
-let S = lsLoad() || {
-  settings:{...BLANK_SETTINGS},
-  products: DEFAULT_PRODUCTS,
-  raceStart: null,
-  laps: [], cur: null, editN: null,
-  onsets: {}, nextLap: 1, tab:"lap"
-};
-S.settings = {...BLANK_SETTINGS, ...(S.settings||{})};
-S.products = (S.products && S.products.length) ? S.products : DEFAULT_PRODUCTS;
+/* ---------- state ---------- */
+const BLANK_SETTINGS={ startTime:RACE_META.defaultStart, targetLaps:RACE_META.laps,
+  lapMiles:RACE_META.lapMiles, syncUrl:"", syncSecret:"", snapEvery:1, theme:"dark" };
+let S = lsLoad() || { settings:{...BLANK_SETTINGS}, products:DEFAULT_PRODUCTS,
+  raceStart:null, raceEnd:null, endNote:"",
+  laps:[], cur:null, editN:null, onsets:{}, nextLap:1, tab:"lap" };
+S.settings={...BLANK_SETTINGS,...(S.settings||{})};
+S.products=(S.products&&S.products.length)?S.products:DEFAULT_PRODUCTS;
 DEFAULT_PRODUCTS.forEach(d=>{ if(!S.products.find(p=>p.id===d.id)) S.products.push(d); });
 S.laps=S.laps||[]; S.onsets=S.onsets||{}; S.nextLap=S.nextLap||1;
 
-/* migrate v1 items (id -> 1|2) to v2 (id -> {s,q}) */
+function blankSection(){ return {drink:null,amt:"all",items:{},extra:[]}; }
+function blankLap(n){
+  return { n, arrived:null,
+    course:blankSection(), camp:blankSection(),
+    gut:null, mood:carried("mood",null), legs:carried("legs",null), layers:carried("layers",null),
+    toilet:"None", symptoms:[], symOther:"", maint:[], notes:"",
+    newOnsets:[], swell:null, synced:false };
+}
+
+/* migrate v1/v2 records into the course/camp model */
 (function migrate(){
-  const fix = l => {
-    if(!l||!l.items) return;
-    Object.keys(l.items).forEach(id=>{
-      const v=l.items[id];
-      if(typeof v==="number") l.items[id]={s:v,q:1};
-    });
+  const fix=l=>{
+    if(!l) return;
+    if(!l.course){
+      l.course=blankSection(); l.camp=blankSection();
+      l.course.drink=l.drink||null; l.course.amt=l.drinkAmt||"all";
+      l.camp.drink=l.drink2||null; l.camp.amt=l.drink2Amt||"all";
+      Object.keys(l.items||{}).forEach(id=>{
+        const v=l.items[id]; const e=(typeof v==="number")?{s:v,q:1}:v;
+        const p=prod(id);
+        (p&&p.drink?l.course:l.camp).items[id]=e;
+      });
+      l.course.extra=(l.extra||[]).slice(); 
+      delete l.drink; delete l.drinkAmt; delete l.drink2; delete l.drink2Amt;
+      delete l.items; delete l.extra; delete l.departed;
+    }
     if(l.urine!==undefined) delete l.urine;
     if(l.maint) l.maint=l.maint.map(m=>m==="Feet"?"Feet check":m);
     if(l.symptoms) l.symptoms=l.symptoms.filter(x=>x!=="Urgency");
   };
-  S.laps.forEach(fix); fix(S.cur);
-  delete S.onsets["Urgency"];
+  S.laps.forEach(fix); fix(S.cur); delete S.onsets["Urgency"];
 })();
 
 let saveTimer=null;
 function save(){
   clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>{
-    persistOK = lsSave(S); idbSave(S);
+    persistOK=lsSave(S); idbSave(S);
     const b=document.getElementById("bSave");
-    if(b){ b.textContent = persistOK?"saved":"no storage"; b.className="badge "+(persistOK?"on":"off"); }
+    if(b){ b.textContent=persistOK?"saved":"no storage"; b.className="badge "+(persistOK?"on":"off"); }
   },120);
 }
 
-/* ============================================================
-   HELPERS
-   ============================================================ */
-const $ = s => document.querySelector(s);
-const now = () => Date.now();
-const hhmm = ts => ts ? new Date(ts).toTimeString().slice(0,5) : "";
-const hhmmss = ts => ts ? new Date(ts).toTimeString().slice(0,8) : "";
-const round = n => Math.round(n);
-function mmss(ms){ if(!(ms>=0)) return "––:––"; const s=Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
-function mins(ms){ return (ms==null||isNaN(ms)) ? "" : (ms/60000).toFixed(1); }
-function signed(n,unit){ return (n>=0?"+":"−")+Math.abs(round(n))+(unit||""); }
-function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),1900); }
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const now=()=>Date.now();
+const hhmm=ts=>ts?new Date(ts).toTimeString().slice(0,5):"";
+const hhmmss=ts=>ts?new Date(ts).toTimeString().slice(0,8):"";
+const round=n=>Math.round(n);
+function mmss(ms){ if(!(ms>=0)) return "––:––"; const s=Math.floor(ms/1000);
+  return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
+function mins(ms){ return (ms==null||isNaN(ms))?"":(ms/60000).toFixed(1); }
+function signed(n){ return (n>=0?"+":"−")+Math.abs(round(n)); }
+function toast(m){ const t=$("#toast"); if(!t) return; t.textContent=m; t.classList.add("show");
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),1900); }
 function prod(id){ return S.products.find(p=>p.id===id); }
-function prevLap(){ return S.laps.length ? S.laps[S.laps.length-1] : null; }
-function carried(f,fb){ const p=prevLap(); return (p && p[f]!=null && p[f]!=="") ? p[f] : fb; }
+function prevLap(){ return S.laps.length?S.laps[S.laps.length-1]:null; }
+function carried(f,fb){ const p=prevLap(); return (p&&p[f]!=null&&p[f]!=="")?p[f]:fb; }
 
-/* Whistle times are fixed: every lap starts on the hour. */
-function whistle(n){ return S.raceStart ? S.raceStart + (n-1)*3600000 : null; }
-function lapRunMs(l){ const w=whistle(l.n); return (w&&l.arrived) ? l.arrived-w : null; }
-function bufferMs(l){ const w=whistle(l.n+1); return (w&&l.arrived) ? w-l.arrived : null; }
-function campMs(l){ return (l.arrived&&l.departed) ? l.departed-l.arrived : null; }
+/* Bells are fixed on the hour. Camp time is bell − arrival: she leaves on the bell. */
+function whistle(n){ return S.raceStart ? S.raceStart+(n-1)*3600000 : null; }
+function lapRunMs(l){ const w=whistle(l.n); return (w&&l.arrived)?l.arrived-w:null; }
+function campMs(l){ const w=whistle(l.n+1); return (w&&l.arrived)?w-l.arrived:null; }
 
-function blankLap(n){
-  return { n, arrived:null, departed:null,
-    drink:null, drinkAmt:"all", drink2:null, drink2Amt:"all",
-    items:{}, extra:[], gut:null,
-    mood:carried("mood",null), legs:carried("legs",null), layers:carried("layers",null),
-    toilet:"None", symptoms:[], symOther:"", maint:[], notes:"",
-    newOnsets:[], swell:null, synced:false };
-}
+function activeLap(){ return S.editN!=null ? (S.laps.find(l=>l.n===S.editN)||null) : S.cur; }
+const isEditing=()=>S.editN!=null;
 
-/* the lap currently on screen: either the live one or one opened from the log */
-function activeLap(){
-  if(S.editN!=null) return S.laps.find(l=>l.n===S.editN)||null;
-  return S.cur;
-}
-const isEditing = () => S.editN!=null;
-
-function totals(l){
-  const t={kcal:0,carb:0,na:0,caf:0,ml:0,est:false,unset:false};
-  const addDrink=(id,amt)=>{
-    if(!id) return; const p=prod(id); if(!p) return;
-    const f=(AMOUNTS.find(a=>a.k===amt)||{f:1}).f;
-    t.kcal+=p.kcal*f; t.carb+=p.carb*f; t.na+=p.na*f; t.caf+=p.caf*f; t.ml+=p.ml*f;
-    if(p.est)t.est=true; if(p.unset)t.unset=true;
-  };
-  addDrink(l.drink,l.drinkAmt); addDrink(l.drink2,l.drink2Amt);
-  Object.keys(l.items||{}).forEach(id=>{
-    const e=l.items[id]; if(!e||e.s!==1) return;
-    const p=prod(id); if(!p) return;
-    const q=e.q==null?1:e.q;
+function sectionTotals(sec,t){
+  if(!sec) return;
+  if(sec.drink){ const p=prod(sec.drink);
+    if(p){ const f=(AMOUNTS.find(a=>a.k===sec.amt)||{f:1}).f;
+      t.kcal+=p.kcal*f; t.carb+=p.carb*f; t.na+=p.na*f; t.caf+=p.caf*f; t.ml+=p.ml*f;
+      if(p.est)t.est=true; if(p.unset)t.unset=true; } }
+  Object.keys(sec.items||{}).forEach(id=>{
+    const e=sec.items[id]; if(!e||e.s!==1) return;
+    const p=prod(id); if(!p) return; const q=e.q==null?1:e.q;
     t.kcal+=p.kcal*q; t.carb+=p.carb*q; t.na+=p.na*q; t.caf+=p.caf*q; t.ml+=p.ml*q;
-    if(p.est)t.est=true; if(p.unset)t.unset=true;
-  });
-  if((l.extra||[]).length) t.est=true;
-  return t;
+    if(p.est)t.est=true; if(p.unset)t.unset=true; });
+  if((sec.extra||[]).length) t.est=true;
 }
+function totals(l){ const t={kcal:0,carb:0,na:0,caf:0,ml:0,est:false,unset:false};
+  sectionTotals(l.course,t); sectionTotals(l.camp,t); return t; }
+function secTotal(sec){ const t={kcal:0,carb:0,na:0,caf:0,ml:0,est:false,unset:false};
+  sectionTotals(sec,t); return t; }
 function cumulative(){
   const a={kcal:0,carb:0,na:0,ml:0}, p={kcal:0,carb:0,na:0,ml:0};
-  S.laps.forEach(l=>{
-    const t=totals(l); a.kcal+=t.kcal; a.carb+=t.carb; a.na+=t.na; a.ml+=t.ml;
-    const q=planTarget(l.n); p.kcal+=q.kcal; p.carb+=q.carb; p.na+=q.na; p.ml+=q.ml;
-  });
+  S.laps.forEach(l=>{ const t=totals(l);
+    a.kcal+=t.kcal; a.carb+=t.carb; a.na+=t.na; a.ml+=t.ml;
+    const q=planTarget(l.n); p.kcal+=q.kcal; p.carb+=q.carb; p.na+=q.na; p.ml+=q.ml; });
   return {a,p,n:S.laps.length};
 }
 
 /* ============================================================
    RENDER
    ============================================================ */
-let lastTab=null, lastKey=null;
+let lastKey=null;
 function render(){
-  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current", b.dataset.tab===S.tab?"true":"false"));
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.tab===S.tab?"true":"false"));
   const L=activeLap();
-  $("#hLap").textContent = L ? L.n : S.nextLap;
-  $("#hOf").textContent = "/ " + S.settings.targetLaps;
-
+  $("#hLap").textContent=L?L.n:S.nextLap;
+  $("#hOf").textContent="/ "+S.settings.targetLaps;
   const v=$("#view");
-  const key = S.tab + ":" + (S.editN!=null?("e"+S.editN):(S.cur?"c":"-"));
+  const key=S.tab+":"+(S.editN!=null?("e"+S.editN):(S.cur?"c":"-"));
   const y=window.scrollY, jump=(key!==lastKey);
   const act=document.activeElement, fid=act&&act.id?act.id:null;
   const caret=(act&&"selectionStart" in act)?act.selectionStart:null;
-
-  v.innerHTML = ({lap:viewLap,log:viewLog,out:viewOut,set:viewSet})[S.tab]();
+  v.innerHTML=({lap:viewLap,log:viewLog,out:viewOut,set:viewSet})[S.tab]();
   bind();
-
-  if(jump){ lastKey=key; lastTab=S.tab; window.scrollTo(0,0); }
-  else{
-    window.scrollTo(0,y);
+  if(jump){ lastKey=key; window.scrollTo(0,0); }
+  else{ window.scrollTo(0,y);
     if(fid){ const el=document.getElementById(fid);
       if(el){ el.focus({preventScroll:true});
-        if(caret!=null&&"setSelectionRange" in el){ try{ el.setSelectionRange(caret,caret); }catch(e){} } } }
-  }
+        if(caret!=null&&"setSelectionRange" in el){ try{ el.setSelectionRange(caret,caret); }catch(e){} } } } }
 }
 
-/* ---------- LAP ---------- */
+/* ---------- shared section renderer ---------- */
+function sectionCard(l,which,title,strap,plannedIds){
+  const sec=l[which];
+  const drinks=S.products.filter(p=>p.drink);
+  const foods=S.products.filter(p=>!p.drink);
+  const st=secTotal(sec);
+  const dchip=p=>`<button class="chip ${plannedIds.includes(p.id)?"planned":""}" data-drink="${which}" data-id="${p.id}" data-s="${sec.drink===p.id?1:0}">${p.name}<span class="sub">${plannedIds.includes(p.id)?"planned":(p.note||"&nbsp;")}</span></button>`;
+  const fchip=p=>{
+    const e=sec.items[p.id], s=e?e.s:0, q=e?(e.q==null?1:e.q):1;
+    const isPlan=plannedIds.includes(p.id);
+    const lbl=s===2?"refused":(s===1?((PORTIONS.find(x=>x.q===q)||{l:q}).l+" portion"):(isPlan?"planned":(p.note||"&nbsp;")));
+    let h=`<button class="chip ${isPlan?"planned":""}" data-item="${which}" data-id="${p.id}" data-s="${s}">${p.name}<span class="sub">${lbl}</span></button>`;
+    if(s===1) h+=`<div class="portions"><span class="plabel">How much</span><div class="seg sm">${
+      PORTIONS.map(x=>`<button data-portion="${which}" data-id="${p.id}" data-q="${x.q}" aria-pressed="${q===x.q}">${x.l}</button>`).join("")}</div></div>`;
+    return h;
+  };
+  return `<section class="card">
+    <p class="eyebrow">${title}</p>
+    <p class="strap">${strap}</p>
+    <p class="sublabel">Drink</p>
+    <div class="chips">${drinks.map(dchip).join("")}</div>
+    <div class="seg sm" style="margin-top:8px">${AMOUNTS.map(a=>`<button data-amt="${which}" data-k="${a.k}" aria-pressed="${sec.amt===a.k}">${a.label}</button>`).join("")}</div>
+    <p class="sublabel" style="margin-top:16px">Food</p>
+    <div class="chips">${foods.map(fchip).join("")}</div>
+    ${(sec.extra||[]).length?`<div class="chips" style="margin-top:8px">${sec.extra.map((x,i)=>`<button class="chip" data-s="1" data-extra="${which}" data-i="${i}">${x}<span class="sub">tap to remove</span></button>`).join("")}</div>`:""}
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <input type="text" id="extraIn_${which}" placeholder="something else" autocomplete="off">
+      <button class="big" data-extraadd="${which}" style="min-width:70px;letter-spacing:.04em">Add</button>
+    </div>
+    <div class="sectot mono">${round(st.kcal)} kcal · ${round(st.carb)} g · ${round(st.na)} mg · ${round(st.ml)} ml</div>
+  </section>`;
+}
+
+/* ---------- LAP / HOUR CAPTURE ---------- */
 function viewLap(){
   const l=activeLap();
   if(!l) return idleScreen();
   const ed=isEditing();
-  const planned=plannedChips(l.n);
   const pnotes=(planFor(l.n)||{n:[]}).n;
-  const drinks=S.products.filter(p=>p.drink);
-  const foods=S.products.filter(p=>!p.drink);
   const t=totals(l), tgt=planTarget(l.n);
-
-  const dchips=(sel,attr)=>drinks.map(p=>
-    `<button class="chip ${planned.includes(p.id)?"planned":""}" data-${attr}="${p.id}" data-s="${sel===p.id?1:0}">${p.name}<span class="sub">${planned.includes(p.id)?"planned":(p.note||"&nbsp;")}</span></button>`).join("");
-
-  const foodChip=p=>{
-    const e=l.items[p.id]; const st=e?e.s:0; const q=e?(e.q==null?1:e.q):1;
-    const isPlan=planned.includes(p.id);
-    const lbl=st===2?"refused":(st===1?((PORTIONS.find(x=>x.q===q)||{l:q}).l+" portion"):(isPlan?"planned":(p.note||"&nbsp;")));
-    let html=`<button class="chip ${isPlan?"planned":""}" data-item="${p.id}" data-s="${st}">${p.name}<span class="sub">${lbl}</span></button>`;
-    if(st===1){
-      html+=`<div class="portions"><span class="plabel">How much</span><div class="seg sm">${
-        PORTIONS.map(x=>`<button data-portion="${p.id}" data-q="${x.q}" aria-pressed="${q===x.q}">${x.l}</button>`).join("")
-      }</div></div>`;
-    }
-    return html;
-  };
+  const bellNext=whistle(l.n+1);
 
   return `
-  ${ed?`<div class="editbar">Editing lap ${l.n} — changes save as you tap</div>`:""}
+  ${ed?`<div class="editbar">Editing hour ${l.n} — changes save as you tap</div>`:""}
   <section>
     <div class="clock ${ed?"":"live"}" id="clock">
       <div class="pulse"></div>
-      <div class="t mono" id="ct">${ed?mmss(campMs(l)):"00:00"}</div>
-      <div class="lbl">${ed?"In camp":"In camp now"}</div>
-      <div class="sub">${S.raceStart?`Bell ${hhmm(whistle(l.n))} · lap took ${mins(lapRunMs(l))||"—"} min · ${bufferMs(l)!=null?`${mins(bufferMs(l))} min to next bell`:""}`:`No race start set — times can't be checked against the bell`}</div>
+      <div class="t mono" id="ct">${ed?mmss(campMs(l)):"––:––"}</div>
+      <div class="lbl">${ed?"Was in camp":"Until the bell"}</div>
+      <div class="sub">${S.raceStart
+        ? `Lap ${l.n} bell ${hhmm(whistle(l.n))} · in at ${hhmm(l.arrived)} · lap ${mins(lapRunMs(l))||"—"} min · next bell ${hhmm(bellNext)}`
+        : "No race start set"}</div>
     </div>
     <div class="bigrow">
-      ${ed
-        ? `<button class="big ghost" id="delLap">Delete lap</button><button class="big primary" id="doneEdit">Done</button>`
-        : `<button class="big ghost" id="undoIn">Undo arrival</button><button class="big primary" id="btnOut">Departed</button>`}
+      ${ed?`<button class="big ghost" id="delLap">Delete hour</button><button class="big primary" id="doneEdit">Done</button>`
+          :`<button class="big ghost" id="undoIn">Cancel</button><button class="big primary" id="btnSubmit">Submit hour ${l.n}</button>`}
     </div>
   </section>
 
   <section class="card">
-    <p class="eyebrow">Times</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div><label class="f" style="margin-top:0">Arrived</label><input type="time" id="tIn" step="60" value="${hhmm(l.arrived)}"></div>
-      <div><label class="f" style="margin-top:0">Departed</label><input type="time" id="tOut" step="60" value="${hhmm(l.departed)}"></div>
+    <p class="eyebrow">Arrival time</p>
+    <input type="time" id="tIn" step="60" value="${hhmm(l.arrived)}">
+    <div class="nudge">
+      <button data-nudge="-5">−5 min</button>
+      <button data-nudge="-1">−1 min</button>
+      <button data-nudge="1">+1 min</button>
+      <button data-nudge="5">+5 min</button>
     </div>
-    <p class="legend">Missed a button? Type the real time. Everything downstream recalculates.</p>
-  </section>
-
-  ${pnotes.length?`<section class="card"><p class="eyebrow">Plan notes for this lap</p>${pnotes.map(n=>`<p class="pnote">${n}</p>`).join("")}</section>`:""}
-
-  <section class="card">
-    <p class="eyebrow">Bottle on course</p>
-    <div class="chips">${dchips(l.drink,"drink")}</div>
-    <label class="f">How much went down</label>
-    <div class="seg sm">${AMOUNTS.map(a=>`<button data-amt="${a.k}" aria-pressed="${l.drinkAmt===a.k}">${a.label}</button>`).join("")}</div>
-  </section>
-
-  <section class="card">
-    <p class="eyebrow">Drink in camp</p>
-    <div class="chips">${dchips(l.drink2,"drink2")}</div>
-    <label class="f">How much</label>
-    <div class="seg sm">${AMOUNTS.map(a=>`<button data-amt2="${a.k}" aria-pressed="${l.drink2Amt===a.k}">${a.label}</button>`).join("")}</div>
-  </section>
-
-  <section class="card">
-    <p class="eyebrow">Food</p>
-    <div class="chips">${foods.map(foodChip).join("")}</div>
-    <p class="legend">Tap once = taken · twice = refused · three times = clear. Portion defaults to a whole one.</p>
-    ${(l.extra||[]).length?`<div class="chips" style="margin-top:8px">${l.extra.map((x,i)=>`<button class="chip" data-s="1" data-extra="${i}">${x}<span class="sub">tap to remove</span></button>`).join("")}</div>`:""}
-    <label class="f">Something else</label>
-    <div style="display:flex;gap:8px">
-      <input type="text" id="extraIn" placeholder="type it" autocomplete="off">
-      <button class="big" id="extraAdd" style="min-width:76px;letter-spacing:.04em">Add</button>
+    <div class="nudge">
+      <button data-setnow="1">Set to now (${hhmm(Date.now())})</button>
+      <button data-setbell="1">Set to bell +51 (${hhmm((whistle(l.n)||0)+51*60000)})</button>
     </div>
+    <p class="legend">She leaves on the bell, so camp time is worked out from this. Type it, use the arrows, or nudge it.</p>
   </section>
+
+  ${pnotes.length?`<section class="card"><p class="eyebrow">Plan notes for this hour</p>${pnotes.map(n=>`<p class="pnote">${n}</p>`).join("")}</section>`:""}
+
+  ${sectionCard(l,"course",`On course · lap ${l.n}`,`What she carried and drank out there`,plannedCourse(l.n))}
+  ${sectionCard(l,"camp",`In camp · after lap ${l.n}`,`What she took at the table before the ${hhmm(bellNext)} bell`,plannedCamp(l.n))}
 
   <section class="card">
     <p class="eyebrow">Gut</p>
@@ -555,11 +524,9 @@ function viewLap(){
     <p class="eyebrow">Symptoms</p>
     <div class="sym">${SYMPTOMS.map(s=>{
       const on=l.symptoms.includes(s), isNew=l.newOnsets.includes(s);
-      return `<button data-sym="${s}" aria-pressed="${on}">${s}${isNew?'<span class="new">1st time</span>':''}</button>`;
-    }).join("")}</div>
+      return `<button data-sym="${s}" aria-pressed="${on}">${s}${isNew?'<span class="new">1st time</span>':''}</button>`;}).join("")}</div>
     <label class="f">Other</label>
     <input type="text" id="symOther" value="${(l.symOther||"").replace(/"/g,"&quot;")}" placeholder="anything not on the list">
-    <p class="legend">First time each one is tapped, the lap and clock time are stamped permanently.</p>
   </section>
 
   <section class="card">
@@ -582,125 +549,147 @@ function viewLap(){
   </section>
 
   <section class="card">
-    <p class="eyebrow">This lap · actual vs plan</p>
-    ${[["Energy","kcal",t.kcal,tgt.kcal," kcal"],["Carb","carb",t.carb,tgt.carb," g"],["Sodium","na",t.na,tgt.na," mg"],["Fluid","ml",t.ml,tgt.ml," ml"]]
-      .map(([lbl,k,act,pl,u])=>`<div class="kv"><span>${lbl}</span><b class="mono">${round(act)}${u} <span style="color:var(--muted);font-weight:400">/ ${pl}${u}</span> <span style="color:${act>=pl*0.9?"var(--green)":"var(--red)"}">${signed(act-pl)}</span></b></div>`).join("")}
+    <p class="eyebrow">Hour ${l.n} total · course + camp vs plan</p>
+    ${[["Energy",t.kcal,tgt.kcal,"kcal"],["Carb",t.carb,tgt.carb,"g"],["Sodium",t.na,tgt.na,"mg"],["Fluid",t.ml,tgt.ml,"ml"]]
+      .map(([lbl,a,p,u])=>`<div class="kv"><span>${lbl}</span><b class="mono">${round(a)}${u==="kcal"?"":""} <span style="color:var(--muted);font-weight:400">/ ${p} ${u}</span> <span style="color:${a>=p*0.9?"var(--green)":"var(--red)"}">${signed(a-p)}</span></b></div>`).join("")}
     <div class="kv"><span>Caffeine</span><b class="mono">${round(t.caf)} mg</b></div>
-    ${t.unset?`<div class="err">A product with no values set is in this lap. Totals are short. Fix it in Setup.</div>`:""}
+    ${t.unset?`<div class="err">A product with no values set is in this hour. Totals are short.</div>`:""}
     ${t.est?`<div class="warn">Includes estimated values — flagged in the export.</div>`:""}
   </section>
 
   <section>
-    ${ed
-      ? `<button class="big primary wide" id="doneEdit2" style="width:100%">Done — back to log</button>`
-      : `<button class="big primary wide" id="btnOut2" style="width:100%">Departed — save lap ${l.n}</button>`}
+    ${ed?`<button class="big primary wide" id="doneEdit2" style="width:100%">Done — back to log</button>`
+        :`<button class="big primary wide" id="btnSubmit2" style="width:100%">Submit hour ${l.n}</button>`}
   </section>`;
 }
 
+/* ---------- IDLE ---------- */
 function idleScreen(){
-  const p=prevLap(), c=cumulative();
-  const started=!!S.raceStart;
+  const p=prevLap(), c=cumulative(), started=!!S.raceStart, ended=!!S.raceEnd;
+  if(ended) return endedScreen(c);
   return `
   <section>
-    <div class="clock">
-      <div class="t mono">${p?mmss(campMs(p)):(started?"––:––":"—")}</div>
-      <div class="lbl">${p?"Last turnaround":(started?"On course":"Not started")}</div>
+    <div class="clock ${started?"live":""}">
+      <div class="pulse"></div>
+      <div class="t mono" id="ct">${started?"––:––":"—"}</div>
+      <div class="lbl">${started?"On course":"Not started"}</div>
       <div class="sub">${started
-        ? (p?`Lap ${p.n} · in ${hhmm(p.arrived)} · out ${hhmm(p.departed)} · next bell ${hhmm(whistle(S.nextLap))}`
-             :`Race started ${hhmm(S.raceStart)} · lap 1 bell has gone`)
-        : "Press start when the bell goes for lap 1"}</div>
+        ? `Lap ${S.nextLap} · bell went ${hhmm(whistle(S.nextLap))} · due back about ${hhmm(whistle(S.nextLap)+51*60000)}`
+        : `Press start when the bell goes for lap 1`}</div>
     </div>
     <div class="bigrow">
-      ${started
-        ? `<button class="big primary wide" id="btnIn">She's in — end lap ${S.nextLap}</button>`
-        : `<button class="big primary wide" id="btnStart">Start race — bell for lap 1</button>`}
+      ${started?`<button class="big primary wide" id="btnIn">She's in — log hour ${S.nextLap}</button>`
+               :`<button class="big primary wide" id="btnStart">Start race — bell for lap 1</button>`}
     </div>
     ${!persistOK?`<div class="err">Storage is off — this looks like a preview. Nothing will survive a reload.</div>`:""}
   </section>
 
   <section class="card">
     <p class="eyebrow">Race</p>
-    <div class="kv"><span>Laps done</span><b class="mono">${c.n} / ${S.settings.targetLaps}</b></div>
+    <div class="kv"><span>Hours completed</span><b class="mono">${c.n} / ${S.settings.targetLaps}</b></div>
     <div class="kv"><span>Distance</span><b class="mono">${(c.n*S.settings.lapMiles).toFixed(1)} mi</b></div>
-    <div class="kv"><span>Median turnaround</span><b class="mono">${medianDown()}</b></div>
     <div class="kv"><span>Median lap</span><b class="mono">${medianLap()}</b></div>
+    <div class="kv"><span>Median camp</span><b class="mono">${medianCamp()}</b></div>
     <div class="kv"><span>Unsynced rows</span><b class="mono">${S.laps.filter(x=>!x.synced).length}</b></div>
   </section>
 
-  ${c.n?`<section class="card">
-    <p class="eyebrow">Cumulative · actual vs plan (${c.n} lap${c.n===1?"":"s"})</p>
-    ${[["Energy","kcal",c.a.kcal,c.p.kcal,"kcal"],["Carb","carb",c.a.carb,c.p.carb,"g"],["Sodium","na",c.a.na,c.p.na,"mg"],["Fluid","ml",c.a.ml,c.p.ml,"ml"]]
-      .map(([lbl,k,a,pl,u])=>{
-        const pct=pl?Math.round(a/pl*100):0;
-        const col=pct>=90?"var(--green)":(pct>=75?"var(--amber)":"var(--red)");
-        return `<div class="kv"><span>${lbl}</span><b class="mono">${round(a)} <span style="color:var(--muted);font-weight:400">/ ${round(pl)} ${u}</span> <span style="color:${col}">${pct}%</span></b></div>
-        <div class="bar"><i style="width:${Math.min(100,pct)}%;background:${col}"></i></div>`;
-      }).join("")}
-    <div class="kv" style="margin-top:6px"><span>Actual rate</span><b class="mono">${round(c.a.kcal/c.n)} kcal · ${round(c.a.carb/c.n)} g · ${round(c.a.na/c.n)} mg · ${round(c.a.ml/c.n)} ml per hr</b></div>
-    <p class="legend">Plan is ${round(c.p.kcal/c.n)} kcal · ${round(c.p.carb/c.n)} g carb · ${round(c.p.na/c.n)} mg Na · ${round(c.p.ml/c.n)} ml per hour.</p>
-  </section>`:""}
+  ${c.n?cumulativeCard(c):""}
 
   <section>
     <button class="big wide" id="btnFlags" style="width:100%;color:var(--red);border-color:var(--alert-line)">Red flags — when to stop</button>
+    ${started?`<button class="big wide" id="btnEnd" style="width:100%;margin-top:10px;color:var(--muted)">End race</button>`:""}
   </section>`;
 }
-function medianDown(){
-  const d=S.laps.map(campMs).filter(x=>x!=null).sort((a,b)=>a-b);
-  return d.length?mmss(d[Math.floor(d.length/2)]):"––:––";
+function endedScreen(c){
+  return `
+  <section>
+    <div class="clock">
+      <div class="t mono">${c.n}</div>
+      <div class="lbl">Hours completed</div>
+      <div class="sub">${(c.n*S.settings.lapMiles).toFixed(1)} miles · ${hhmm(S.raceStart)} to ${hhmm(S.raceEnd)}</div>
+    </div>
+    ${S.endNote?`<div class="card" style="margin-top:12px"><p class="eyebrow">How it ended</p><p>${String(S.endNote).replace(/</g,"&lt;")}</p></div>`:""}
+    <div class="bigrow">
+      <button class="big" id="btnReopen">Reopen race</button>
+      <button class="big primary" id="btnGoExport">Export the data</button>
+    </div>
+  </section>
+  <section class="card">
+    <p class="eyebrow">Final</p>
+    <div class="kv"><span>Median lap</span><b class="mono">${medianLap()}</b></div>
+    <div class="kv"><span>Median camp</span><b class="mono">${medianCamp()}</b></div>
+    ${Object.keys(S.onsets).length?Object.keys(S.onsets).map(k=>`<div class="kv"><span>First ${k.toLowerCase()}</span><b class="mono">hour ${S.onsets[k].lap}</b></div>`).join(""):""}
+  </section>
+  ${c.n?cumulativeCard(c):""}`;
 }
-function medianLap(){
-  const d=S.laps.map(lapRunMs).filter(x=>x!=null&&x>0).sort((a,b)=>a-b);
-  return d.length?mmss(d[Math.floor(d.length/2)]):"––:––";
+function cumulativeCard(c){
+  return `<section class="card">
+    <p class="eyebrow">Cumulative · actual vs plan (${c.n} hour${c.n===1?"":"s"})</p>
+    ${[["Energy",c.a.kcal,c.p.kcal,"kcal"],["Carb",c.a.carb,c.p.carb,"g"],["Sodium",c.a.na,c.p.na,"mg"],["Fluid",c.a.ml,c.p.ml,"ml"]]
+      .map(([lbl,a,p,u])=>{ const pct=p?Math.round(a/p*100):0;
+        const col=pct>=90?"var(--green)":(pct>=75?"var(--amber)":"var(--red)");
+        return `<div class="kv"><span>${lbl}</span><b class="mono">${round(a)} <span style="color:var(--muted);font-weight:400">/ ${round(p)} ${u}</span> <span style="color:${col}">${pct}%</span></b></div>
+        <div class="bar"><i style="width:${Math.min(100,pct)}%;background:${col}"></i></div>`; }).join("")}
+    <div class="kv" style="margin-top:6px"><span>Actual rate</span><b class="mono">${round(c.a.kcal/c.n)} kcal · ${round(c.a.carb/c.n)} g · ${round(c.a.na/c.n)} mg · ${round(c.a.ml/c.n)} ml per hr</b></div>
+    <p class="legend">Plan is ${round(c.p.kcal/c.n)} kcal · ${round(c.p.carb/c.n)} g carb · ${round(c.p.na/c.n)} mg Na · ${round(c.p.ml/c.n)} ml per hour.</p>
+  </section>`;
 }
+function medianLap(){ const d=S.laps.map(lapRunMs).filter(x=>x!=null&&x>0).sort((a,b)=>a-b);
+  return d.length?mmss(d[Math.floor(d.length/2)]):"––:––"; }
+function medianCamp(){ const d=S.laps.map(campMs).filter(x=>x!=null&&x>0).sort((a,b)=>a-b);
+  return d.length?mmss(d[Math.floor(d.length/2)]):"––:––"; }
 
 /* ---------- LOG ---------- */
 function viewLog(){
-  if(!S.laps.length) return `<section class="card"><p class="eyebrow">Log</p><p>No laps yet.</p></section>`;
+  if(!S.laps.length) return `<section class="card"><p class="eyebrow">Log</p><p>No hours logged yet.</p></section>`;
   const rows=[...S.laps].sort((a,b)=>b.n-a.n).map(l=>{
     const t=totals(l), tgt=planTarget(l.n);
-    const taken=Object.keys(l.items).filter(k=>l.items[k].s===1)
-      .map(k=>{ const q=l.items[k].q; const nm=(prod(k)||{}).name||k; return q===1?nm:`${nm} (${(PORTIONS.find(x=>x.q===q)||{l:q}).l})`; })
-      .concat(l.extra||[]);
-    const gc = l.gut==null?"var(--muted)":(l.gut<=2?"var(--red)":(l.gut===3?"var(--amber)":"var(--green)"));
-    const kd = t.kcal-tgt.kcal;
+    const nm=(sec)=>Object.keys(sec.items).filter(k=>sec.items[k].s===1)
+      .map(k=>{const q=sec.items[k].q,n=(prod(k)||{}).name||k;return q===1?n:`${n} (${(PORTIONS.find(x=>x.q===q)||{l:q}).l})`;})
+      .concat(sec.extra||[]);
+    const all=[l.course.drink?(prod(l.course.drink)||{}).name:null].concat(nm(l.course))
+      .concat(l.camp.drink?[(prod(l.camp.drink)||{}).name]:[]).concat(nm(l.camp)).filter(Boolean);
+    const gc=l.gut==null?"var(--muted)":(l.gut<=2?"var(--red)":(l.gut===3?"var(--amber)":"var(--green)"));
+    const kd=t.kcal-tgt.kcal;
     return `<button class="laprow" data-open="${l.n}">
       <span class="n mono">${l.n}</span>
       <span class="m">
-        <span class="a"><span class="dot" style="background:${gc}"></span>${taken.length?taken.join(", "):"nothing logged"}</span>
-        <span class="b mono">${hhmm(l.arrived)}→${hhmm(l.departed)} · ${round(t.kcal)}/${tgt.kcal} kcal <span style="color:${kd>=-30?"var(--green)":"var(--red)"}">${signed(kd)}</span>${l.symptoms.length||l.symOther?" · "+l.symptoms.concat(l.symOther?[l.symOther]:[]).join(", "):""}</span>
+        <span class="a"><span class="dot" style="background:${gc}"></span>${all.length?all.join(", "):"nothing logged"}</span>
+        <span class="b mono">in ${hhmm(l.arrived)} · lap ${mins(lapRunMs(l))||"—"} · ${round(t.kcal)}/${tgt.kcal} kcal <span style="color:${kd>=-30?"var(--green)":"var(--red)"}">${signed(kd)}</span>${l.symptoms.length||l.symOther?" · "+l.symptoms.concat(l.symOther?[l.symOther]:[]).join(", "):""}</span>
       </span>
       <span class="d mono">${mmss(campMs(l))}</span>
-    </button>`;
-  }).join("");
+    </button>`;}).join("");
   const on=Object.keys(S.onsets);
   return `
   ${on.length?`<section class="card"><p class="eyebrow">Symptom onsets</p>
-    ${on.map(k=>`<div class="kv"><span>${k}</span><b class="mono">lap ${S.onsets[k].lap} · ${hhmm(S.onsets[k].ts)}</b></div>`).join("")}</section>`:""}
+    ${on.map(k=>`<div class="kv"><span>${k}</span><b class="mono">hour ${S.onsets[k].lap} · ${hhmm(S.onsets[k].ts)}</b></div>`).join("")}</section>`:""}
   <section class="card" style="padding:2px 12px">${rows}</section>
-  <p class="hint" style="padding:0 4px">Tap any lap to open and amend it. The live lap is not affected.</p>`;
+  <p class="hint" style="padding:0 4px">Tap any hour to open and amend it.</p>`;
 }
 
 /* ---------- CSV ---------- */
-const COLS=["lap","bell","arrived","departed","lap_min","camp_min","buffer_min",
- "drink_course","drink_course_amt","drink_camp","drink_camp_amt","taken","refused","other",
+const COLS=["lap","bell","arrived","lap_min","camp_min",
+ "course_drink","course_drink_amt","course_food",
+ "camp_drink","camp_drink_amt","camp_food",
+ "refused","other",
  "kcal","carb_g","sodium_mg","fluid_ml","caffeine_mg",
  "plan_kcal","plan_carb_g","plan_sodium_mg","plan_fluid_ml",
  "gut","mood","legs","layers","toilet","swelling","symptoms","symptom_other",
  "new_onsets","maintenance","notes","flags"];
 function csvCell(v){ v=v==null?"":String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function foodStr(sec){ return Object.keys(sec.items).filter(k=>sec.items[k].s===1)
+  .map(k=>`${(prod(k)||{}).name||k} x${sec.items[k].q==null?1:sec.items[k].q}`).join("; "); }
+function refusedStr(l){ return ["course","camp"].flatMap(w=>Object.keys(l[w].items)
+  .filter(k=>l[w].items[k].s===2).map(k=>(prod(k)||{}).name||k)).join("; "); }
 function buildCSV(){
   const lines=[COLS.join(",")];
   [...S.laps].sort((a,b)=>a.n-b.n).forEach(l=>{
     const t=totals(l), g=planTarget(l.n);
-    const taken=Object.keys(l.items).filter(k=>l.items[k].s===1)
-      .map(k=>`${(prod(k)||{}).name||k} x${l.items[k].q==null?1:l.items[k].q}`);
-    const ref=Object.keys(l.items).filter(k=>l.items[k].s===2).map(k=>(prod(k)||{}).name||k);
     const flags=[t.est?"ESTIMATED_VALUES":"",t.unset?"UNSET_PRODUCT":"",l.swell==="yes"?"SWELLING":""].filter(Boolean).join(" ");
-    lines.push([l.n,hhmmss(whistle(l.n)),hhmmss(l.arrived),hhmmss(l.departed),
-      mins(lapRunMs(l)),mins(campMs(l)),mins(bufferMs(l)),
-      l.drink?((prod(l.drink)||{}).name||l.drink):"", l.drink?l.drinkAmt:"",
-      l.drink2?((prod(l.drink2)||{}).name||l.drink2):"", l.drink2?l.drink2Amt:"",
-      taken.join("; "),ref.join("; "),(l.extra||[]).join("; "),
+    lines.push([l.n,hhmmss(whistle(l.n)),hhmmss(l.arrived),mins(lapRunMs(l)),mins(campMs(l)),
+      l.course.drink?((prod(l.course.drink)||{}).name||l.course.drink):"", l.course.drink?l.course.amt:"", foodStr(l.course),
+      l.camp.drink?((prod(l.camp.drink)||{}).name||l.camp.drink):"", l.camp.drink?l.camp.amt:"", foodStr(l.camp),
+      refusedStr(l), (l.course.extra||[]).concat(l.camp.extra||[]).join("; "),
       round(t.kcal),round(t.carb),round(t.na),round(t.ml),round(t.caf),
       g.kcal,g.carb,g.na,g.ml,
       l.gut??"",l.mood??"",l.legs??"",l.layers??"",l.toilet||"",l.swell||"",
@@ -713,34 +702,8 @@ function parseCSVLine(line){
   const out=[]; let cur="",q=false;
   for(let i=0;i<line.length;i++){ const c=line[i];
     if(q){ if(c==='"'&&line[i+1]==='"'){cur+='"';i++;} else if(c==='"')q=false; else cur+=c; }
-    else { if(c==='"')q=true; else if(c===","){out.push(cur);cur="";} else cur+=c; } }
+    else{ if(c==='"')q=true; else if(c===","){out.push(cur);cur="";} else cur+=c; } }
   out.push(cur); return out;
-}
-
-/* ---------- backup ---------- */
-async function opfsWrite(text){ try{
-  if(!navigator.storage||!navigator.storage.getDirectory) return false;
-  const d=await navigator.storage.getDirectory();
-  const f=await d.getFileHandle("lap-log.csv",{create:true});
-  const w=await f.createWritable(); await w.write(text); await w.close(); return true;
-}catch(e){ return false; } }
-async function opfsRead(){ try{
-  const d=await navigator.storage.getDirectory();
-  const f=await d.getFileHandle("lap-log.csv");
-  return await (await f.getFile()).text();
-}catch(e){ return null; } }
-function downloadCSV(name){ try{
-  const b=new Blob([buildCSV()],{type:"text/csv"}), u=URL.createObjectURL(b);
-  const a=document.createElement("a"); a.href=u; a.download=name; a.style.display="none";
-  document.body.appendChild(a); a.click();
-  setTimeout(()=>{URL.revokeObjectURL(u);a.remove();},4000); return true;
-}catch(e){ return false; } }
-async function snapshot(lapN,manual){
-  const csv=buildCSV(); const okO=await opfsWrite(csv);
-  let okD=false; const every=S.settings.snapEvery||1;
-  if(manual||lapN==null||lapN%every===0) okD=downloadCSV(`lap-log-${String(lapN??"manual").padStart(2,"0")}.csv`);
-  S.lastBackup={ts:now(),lap:lapN,opfs:okO,file:okD}; save();
-  if(manual) toast(okD?"Backup saved to Downloads":"Saved to device store only");
 }
 function importCSV(text){
   const rows=text.replace(/\r/g,"").split("\n").filter(r=>r.trim());
@@ -756,19 +719,19 @@ function importCSV(text){
     const c=parseCSVLine(r), g=n=>{const i=ix(n); return i<0?"":c[i];};
     const n=parseInt(g("lap"),10); if(!n) return;
     const l=blankLap(n);
-    l.arrived=toTs(g("arrived")); l.departed=toTs(g("departed"));
-    if(l.arrived&&l.departed&&l.departed<l.arrived) l.departed+=864e5;
-    l.drink=byName(g("drink_course"))||null; l.drinkAmt=g("drink_course_amt")||"all";
-    l.drink2=byName(g("drink_camp"))||null; l.drink2Amt=g("drink_camp_amt")||"all";
-    l.items={};
-    g("taken").split(";").map(x=>x.trim()).filter(Boolean).forEach(s=>{
-      const m=s.match(/^(.*?)\s+x([\d.]+)$/); const nm=m?m[1]:s; const q=m?parseFloat(m[2]):1;
-      const id=byName(nm); if(id) l.items[id]={s:1,q}; else l.extra.push(s);
-    });
+    l.arrived=toTs(g("arrived"));
+    if(l.arrived && S.raceStart && l.arrived < whistle(n)) l.arrived+=864e5;
+    const fill=(sec,dk,ak,fk)=>{
+      sec.drink=byName(g(dk))||null; sec.amt=g(ak)||"all";
+      g(fk).split(";").map(x=>x.trim()).filter(Boolean).forEach(s=>{
+        const m=s.match(/^(.*?)\s+x([\d.]+)$/); const nm=m?m[1]:s, q=m?parseFloat(m[2]):1;
+        const id=byName(nm); if(id) sec.items[id]={s:1,q}; else sec.extra.push(s); });
+    };
+    fill(l.course,"course_drink","course_drink_amt","course_food");
+    fill(l.camp,"camp_drink","camp_drink_amt","camp_food");
     g("refused").split(";").map(x=>x.trim()).filter(Boolean).forEach(nm=>{
-      const id=byName(nm); if(id) l.items[id]={s:2,q:1};
-    });
-    g("other").split(";").map(x=>x.trim()).filter(Boolean).forEach(x=>l.extra.push(x));
+      const id=byName(nm); if(id) l.camp.items[id]={s:2,q:1}; });
+    g("other").split(";").map(x=>x.trim()).filter(Boolean).forEach(x=>l.camp.extra.push(x));
     const num=v=>v===""?null:(isNaN(+v)?v:+v);
     l.gut=num(g("gut")); l.mood=num(g("mood")); l.legs=num(g("legs"));
     l.layers=g("layers")||null; l.toilet=g("toilet")||"None"; l.swell=g("swelling")||null;
@@ -776,19 +739,52 @@ function importCSV(text){
     l.symOther=g("symptom_other")||"";
     l.newOnsets=g("new_onsets").split(";").map(x=>x.trim()).filter(Boolean);
     l.maint=g("maintenance").split(";").map(x=>x.trim()).filter(Boolean);
-    l.notes=g("notes"); l.synced=false;
-    l.newOnsets.forEach(sy=>{ if(!onsets[sy]) onsets[sy]={lap:n,ts:l.arrived||now()}; });
+    l.notes=g("notes"); l.synced=true;
+    l.newOnsets.forEach(s=>{ if(!onsets[s]) onsets[s]={lap:n,ts:l.arrived||now()}; });
     laps.push(l);
   });
   if(!laps.length) throw new Error("no lap rows found");
   laps.sort((a,b)=>a.n-b.n);
   S.laps=laps; S.onsets=onsets; S.cur=null; S.editN=null;
   S.nextLap=laps[laps.length-1].n+1;
-  if(!S.raceStart && laps[0].arrived) S.raceStart=laps[0].arrived-3060000;
+  if(!S.raceStart && laps[0].arrived){
+    const d=new Date(laps[0].arrived); d.setMinutes(0,0,0); S.raceStart=d.getTime();
+  }
   save(); return laps.length;
 }
 
-/* ---------- EXPORT VIEW ---------- */
+/* ---------- backup ---------- */
+async function opfsWrite(t){ try{ if(!navigator.storage||!navigator.storage.getDirectory) return false;
+  const d=await navigator.storage.getDirectory(); const f=await d.getFileHandle("lap-log.csv",{create:true});
+  const w=await f.createWritable(); await w.write(t); await w.close(); return true; }catch(e){ return false; } }
+async function opfsRead(){ try{ const d=await navigator.storage.getDirectory();
+  const f=await d.getFileHandle("lap-log.csv"); return await (await f.getFile()).text(); }catch(e){ return null; } }
+function downloadCSV(name){ try{
+  const b=new Blob([buildCSV()],{type:"text/csv"}), u=URL.createObjectURL(b);
+  const a=document.createElement("a"); a.href=u; a.download=name; a.style.display="none";
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(u);a.remove();},4000); return true;
+}catch(e){ return false; } }
+async function snapshot(lapN,manual){
+  const csv=buildCSV(); const okO=await opfsWrite(csv);
+  let okD=false; const every=S.settings.snapEvery||1;
+  if(manual||lapN==null||lapN%every===0) okD=downloadCSV(`lap-log-${String(lapN??"manual").padStart(2,"0")}.csv`);
+  S.lastBackup={ts:now(),lap:lapN,opfs:okO,file:okD}; save();
+  if(manual) toast(okD?"Backup saved to Downloads":"Saved to device store only");
+}
+/* pull the whole record back down from the sheet */
+async function fetchFromSheet(){
+  if(!S.settings.syncUrl) throw new Error("No sheet URL set");
+  const url=S.settings.syncUrl+(S.settings.syncUrl.includes("?")?"&":"?")
+    +"get=csv&secret="+encodeURIComponent(S.settings.syncSecret||"");
+  const res=await fetch(url,{method:"GET",redirect:"follow"});
+  const txt=(await res.text()).trim();
+  if(/^ERR/i.test(txt)) throw new Error(txt.slice(0,120));
+  if(/<html/i.test(txt)) throw new Error("Google returned HTML. Redeploy with access set to Anyone.");
+  if(txt.indexOf("lap,")!==0) throw new Error("Sheet didn't return a lap CSV. Update the Apps Script — it needs the doGet in Setup.");
+  return txt;
+}
+
+/* ---------- EXPORT ---------- */
 function viewOut(){
   const csv=buildCSV(), un=S.laps.filter(l=>!l.synced).length;
   return `
@@ -800,23 +796,24 @@ function viewOut(){
       <button class="big wide" id="shareBtn">Share…</button>
       <button class="big wide" id="syncNow" ${S.settings.syncUrl?"":"disabled"}>Push to sheet${un?` (${un} waiting)`:""}</button>
     </div>
-    <p class="hint">${S.laps.length} lap${S.laps.length===1?"":"s"} recorded.</p>
+    <p class="hint">${S.laps.length} hour${S.laps.length===1?"":"s"} recorded.</p>
   </section>
   <section class="card">
     <p class="eyebrow">Backups</p>
     <div class="kv"><span>Device store</span><b>${persistOK?"on":"OFF"}</b></div>
     <div class="kv"><span>Private file store</span><b>${S.lastBackup?(S.lastBackup.opfs?"on":"unavailable"):"—"}</b></div>
-    <div class="kv"><span>Last file to Downloads</span><b class="mono">${S.lastBackup&&S.lastBackup.file?("lap "+S.lastBackup.lap+" · "+hhmm(S.lastBackup.ts)):"none yet"}</b></div>
+    <div class="kv"><span>Last file to Downloads</span><b class="mono">${S.lastBackup&&S.lastBackup.file?("hour "+S.lastBackup.lap+" · "+hhmm(S.lastBackup.ts)):"none yet"}</b></div>
     <div class="kv"><span>Sheet</span><b>${S.settings.syncUrl?(un+" queued"):"off"}</b></div>
     <button class="big wide" id="backupNow" style="width:100%;margin-top:12px">Back up now</button>
-    <p class="hint">A CSV is written every ${S.settings.snapEvery===1?"lap":S.settings.snapEvery+" laps"}. Android asks once to allow multiple downloads — say yes.</p>
+    <p class="hint">A CSV is written every ${S.settings.snapEvery===1?"hour":S.settings.snapEvery+" hours"}. Android asks once to allow multiple downloads — say yes.</p>
   </section>
   <section class="card">
     <p class="eyebrow">Recover</p>
-    <p class="hint">Rebuilds the whole race from a CSV. Use on a spare phone if this one dies.</p>
+    <p class="hint">Rebuilds the whole race. Use on a spare phone if this one dies.</p>
     <div class="bigrow" style="margin-top:10px">
+      <button class="big" id="recSheet" ${S.settings.syncUrl?"":"disabled"}>From the sheet</button>
       <button class="big" id="recOpfs">From device store</button>
-      <button class="big" id="recFile">From a CSV file</button>
+      <button class="big wide" id="recFile">From a CSV file</button>
     </div>
     <input type="file" id="fileIn" accept=".csv,text/csv" style="display:none">
     <div id="recMsg"></div>
@@ -831,19 +828,19 @@ function viewOut(){
   </section>`;
 }
 
-/* ---------- SETUP VIEW ---------- */
+/* ---------- SETUP ---------- */
 function viewSet(){
   const st=S.settings;
   return `
   <section class="card">
     <p class="eyebrow">App</p>
     <div class="kv"><span>Version</span><b class="mono">${APP_VERSION}</b></div>
-    <div class="kv"><span>Plan</span><b class="mono">${RACE_META.planVersion} · ${Object.keys(RACE_PLAN).length} laps</b></div>
+    <div class="kv"><span>Plan</span><b class="mono">${RACE_META.planVersion} · ${Object.keys(RACE_PLAN).length} hours</b></div>
     <div class="kv"><span>Offline</span><b>${navigator.serviceWorker&&navigator.serviceWorker.controller?"ready":"not cached yet"}</b></div>
     <label class="f">Theme</label>
     <div class="seg sm">${[["dark","Dark"],["light","Light"],["auto","Auto"]].map(([v,l])=>`<button data-theme-set="${v}" aria-pressed="${(st.theme||"dark")===v}">${l}</button>`).join("")}</div>
     <label class="f">Auto-backup a CSV every</label>
-    <div class="seg sm">${[1,5,10].map(v=>`<button data-snap="${v}" aria-pressed="${(st.snapEvery||1)===v}">${v===1?"lap":v+" laps"}</button>`).join("")}</div>
+    <div class="seg sm">${[1,5,10].map(v=>`<button data-snap="${v}" aria-pressed="${(st.snapEvery||1)===v}">${v===1?"hour":v+" hours"}</button>`).join("")}</div>
     <button class="big wide" id="updChk" style="width:100%;margin-top:14px">Check for update</button>
     <p class="hint">The app never updates itself. Don't check for updates during the race.</p>
     <div id="updMsg"></div>
@@ -853,15 +850,16 @@ function viewSet(){
     <p class="eyebrow">Race</p>
     <div class="kv"><span>Event</span><b>${RACE_META.name}</b></div>
     <div class="kv"><span>Bell for lap 1</span><b class="mono">${S.raceStart?hhmm(S.raceStart):"not started"}</b></div>
+    <div class="kv"><span>Ended</span><b class="mono">${S.raceEnd?hhmm(S.raceEnd):"no"}</b></div>
     <label class="f">Correct the start time</label>
     <input type="time" id="sStart" step="60" value="${S.raceStart?hhmm(S.raceStart):(st.startTime||"10:00")}">
-    <p class="legend">Every lap starts on the hour from here. Changing this shifts every bell, lap time and buffer.</p>
+    <p class="legend">Every bell is on the hour from here. Changing this shifts every lap time and camp time.</p>
     <label class="f">Target laps</label><input type="number" id="sLaps" value="${st.targetLaps}">
   </section>
 
   <section class="card">
     <p class="eyebrow">Products</p>
-    <p class="hint">Per-serving values behind the totals. Edit any that don't match the pack.</p>
+    <p class="hint">Per-serving values behind the totals.</p>
     ${S.products.map((p,i)=>`
       <details ${p.unset?"open":""}>
         <summary style="color:${p.unset?"var(--red)":"var(--muted)"}">${p.name} — ${p.kcal} kcal · ${p.carb}g · ${p.na}mg${p.unset?" · NOT SET":""}${p.est?" · est":""}</summary>
@@ -873,29 +871,71 @@ function viewSet(){
 
   <section class="card">
     <p class="eyebrow">Sheet sync</p>
-    <p class="hint">The phone is the record; the sheet is a mirror.</p>
     <label class="f">Apps Script web app URL</label><input type="url" id="sUrl" value="${st.syncUrl||""}" placeholder="https://script.google.com/macros/s/…/exec">
     <label class="f">Shared secret</label><input type="text" id="sSec" value="${st.syncSecret||""}">
     <button class="big wide" id="saveSync" style="width:100%;margin-top:12px">Save sync settings</button>
     <button class="big wide" id="testSync" style="width:100%;margin-top:8px">Test connection</button>
     <button class="big wide" id="mkLink" style="width:100%;margin-top:8px">Copy setup link for another phone</button>
     <div id="syncMsg">${S.syncErr?`<div class="err">Last error: ${String(S.syncErr).replace(/</g,"&lt;").slice(0,220)}</div>`:""}${S.lastSync?`<p class="hint">Sheet last replied: <span class="mono">${String(S.lastSync).replace(/</g,"&lt;").slice(0,140)}</span></p>`:""}</div>
+    <details style="margin-top:14px">
+      <summary>Apps Script — v3, adds download</summary>
+<pre>var SECRET = 'CHANGE_ME';
+
+function doGet(e){
+  var p = (e &amp;&amp; e.parameter) || {};
+  if (String(p.secret) !== String(SECRET)) return reply('ERR: wrong secret');
+  if (p.get !== 'csv') return reply('OK:0');
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('laps');
+  if (!sh || sh.getLastRow() === 0) return reply('ERR: no data');
+  var v = sh.getDataRange().getValues();
+  return reply(v.map(function(r){
+    return r.map(function(c){
+      c = (c === null || c === undefined) ? '' : String(c);
+      return /[",\n]/.test(c) ? '"' + c.replace(/"/g,'""') + '"' : c;
+    }).join(',');
+  }).join('\n'));
+}
+
+function doPost(e){
+  try {
+    var d = JSON.parse(e.postData.contents);
+    if (String(d.secret) !== String(SECRET)) return reply('ERR: wrong secret');
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName('laps') || ss.insertSheet('laps');
+    if (sh.getLastRow() === 0) sh.appendRow(d.cols);
+    var ids = sh.getRange(1,1,sh.getLastRow(),1).getValues()
+                .map(function(x){ return String(x[0]); });
+    d.rows.forEach(function(r){
+      var f = ids.indexOf(String(r[0]));
+      if (f &gt; 0) sh.getRange(f+1,1,1,r.length).setValues([r]);
+      else { sh.appendRow(r); ids.push(String(r[0])); }
+    });
+    SpreadsheetApp.flush();
+    return reply('OK:' + d.rows.length);
+  } catch (err) { return reply('ERR: ' + err); }
+}
+
+function reply(t){
+  return ContentService.createTextOutput(t)
+    .setMimeType(ContentService.MimeType.TEXT);
+}</pre>
+      <p class="hint">Replace the whole script, then <b>Deploy → New deployment</b>. The old one has no doGet, so "From the sheet" won't work until you do.</p>
+    </details>
   </section>`;
 }
 
 /* ============================================================
    EVENTS
    ============================================================ */
-function setTimeOn(l,field,val){
-  if(!val){ l[field]=null; return; }
+function setArrival(l,val){
+  if(!val){ l.arrived=null; return; }
   const [h,m]=val.split(":").map(Number);
-  const anchor = whistle(l.n) || l.arrived || now();
+  const anchor=whistle(l.n)||l.arrived||now();
   const d=new Date(anchor); d.setHours(h,m,0,0);
   let ts=d.getTime();
-  // a departure before the arrival means it rolled past midnight
-  if(field==="departed" && l.arrived && ts<l.arrived) ts+=864e5;
-  if(field==="arrived" && whistle(l.n) && ts<whistle(l.n)-3600000) ts+=864e5;
-  l[field]=ts;
+  const w=whistle(l.n);
+  if(w && ts<w) ts+=864e5;              // rolled past midnight
+  l.arrived=ts;
 }
 
 function bind(){
@@ -903,93 +943,97 @@ function bind(){
   const L=activeLap();
 
   on("#btnStart","click",()=>{
-    S.raceStart=now(); S.nextLap=1; save(); render();
+    const d=new Date(); d.setSeconds(0,0);
+    S.raceStart=d.getTime(); S.nextLap=1; S.raceEnd=null; save(); render();
     toast("Race started "+hhmm(S.raceStart)+" — bells on the hour");
   });
-  on("#btnIn","click",()=>{
-    S.cur=blankLap(S.nextLap); S.cur.arrived=now(); save(); render(); startClock();
-  });
-  on("#undoIn","click",()=>{ if(confirm("Discard this lap's capture?")){ S.cur=null; save(); render(); } });
+  on("#btnIn","click",()=>{ S.cur=blankLap(S.nextLap); S.cur.arrived=now(); save(); render(); startClock(); });
+  on("#undoIn","click",()=>{ if(confirm("Discard this hour's capture?")){ S.cur=null; save(); render(); } });
 
-  const depart=()=>{
+  const submit=()=>{
     const l=S.cur; if(!l) return;
-    if(!l.departed) l.departed=now();
+    if(!l.arrived) l.arrived=now();
     S.laps.push(l); S.nextLap=l.n+1; S.cur=null;
     save(); snapshot(l.n,false); queueSync(); render();
-    toast(`Lap ${l.n} saved · ${mmss(campMs(l))} in camp`);
+    toast(`Hour ${l.n} submitted · ${mmss(campMs(l))} to the bell`);
   };
-  on("#btnOut","click",depart); on("#btnOut2","click",depart);
+  on("#btnSubmit","click",submit); on("#btnSubmit2","click",submit);
 
-  const doneEdit=()=>{
-    const l=activeLap(); if(l) l.synced=false;
-    S.editN=null; S.tab="log"; save(); snapshot(null,false); queueSync(); render();
-    toast("Lap updated");
-  };
+  const doneEdit=()=>{ const l=activeLap(); if(l) l.synced=false;
+    S.editN=null; S.tab="log"; save(); snapshot(null,false); queueSync(); render(); toast("Hour updated"); };
   on("#doneEdit","click",doneEdit); on("#doneEdit2","click",doneEdit);
-  on("#delLap","click",()=>{
-    const n=S.editN;
-    if(!confirm(`Delete lap ${n} completely?`)) return;
-    S.laps=S.laps.filter(l=>l.n!==n);
-    S.editN=null; S.tab="log"; save(); render(); toast("Lap "+n+" deleted");
+  on("#delLap","click",()=>{ const n=S.editN;
+    if(!confirm(`Delete hour ${n} completely?`)) return;
+    S.laps=S.laps.filter(l=>l.n!==n); S.editN=null; S.tab="log"; save(); render(); toast("Hour "+n+" deleted"); });
+
+  on("#btnEnd","click",()=>{
+    if(S.cur && !confirm("An hour is open and unsubmitted. End the race anyway?")) return;
+    const note=prompt("How did it end? (last lap completed, why she stopped)","");
+    if(note===null) return;
+    S.raceEnd=now(); S.endNote=note; S.cur=null; save(); snapshot(null,true); queueSync(); render();
+    toast("Race ended — data backed up");
   });
+  on("#btnReopen","click",()=>{ if(!confirm("Reopen the race and keep logging?")) return;
+    S.raceEnd=null; save(); render(); });
+  on("#btnGoExport","click",()=>{ S.tab="out"; save(); render(); });
 
   if(L){
-    on("#tIn","change",e=>{ setTimeOn(L,"arrived",e.target.value); save(); render(); });
-    on("#tOut","change",e=>{ setTimeOn(L,"departed",e.target.value); save(); render(); });
+    on("#tIn","change",e=>{ setArrival(L,e.target.value); save(); render(); });
+    on("#tIn","input",e=>{ if(e.target.value&&e.target.value.length===5){ setArrival(L,e.target.value); save(); } });
+    document.querySelectorAll("[data-nudge]").forEach(b=>b.addEventListener("click",()=>{
+      const base=L.arrived||whistle(L.n)||now();
+      L.arrived=base+(+b.dataset.nudge)*60000; save(); render(); }));
+    document.querySelectorAll("[data-setnow]").forEach(b=>b.addEventListener("click",()=>{
+      L.arrived=now(); save(); render(); toast("Arrival set to "+hhmm(L.arrived)); }));
+    document.querySelectorAll("[data-setbell]").forEach(b=>b.addEventListener("click",()=>{
+      const w=whistle(L.n); if(!w){ toast("No race start set"); return; }
+      L.arrived=w+51*60000; save(); render(); toast("Arrival set to "+hhmm(L.arrived)); }));
 
     document.querySelectorAll("[data-drink]").forEach(b=>b.addEventListener("click",()=>{
-      L.drink=(L.drink===b.dataset.drink)?null:b.dataset.drink; save(); render(); }));
-    document.querySelectorAll("[data-drink2]").forEach(b=>b.addEventListener("click",()=>{
-      L.drink2=(L.drink2===b.dataset.drink2)?null:b.dataset.drink2; save(); render(); }));
+      const sec=L[b.dataset.drink], id=b.dataset.id;
+      sec.drink=(sec.drink===id)?null:id; save(); render(); }));
     document.querySelectorAll("[data-amt]").forEach(b=>b.addEventListener("click",()=>{
-      L.drinkAmt=b.dataset.amt; save(); render(); }));
-    document.querySelectorAll("[data-amt2]").forEach(b=>b.addEventListener("click",()=>{
-      L.drink2Amt=b.dataset.amt2; save(); render(); }));
-
+      L[b.dataset.amt].amt=b.dataset.k; save(); render(); }));
     document.querySelectorAll("[data-item]").forEach(b=>b.addEventListener("click",()=>{
-      const id=b.dataset.item, e=L.items[id], cur=e?e.s:0, next=(cur+1)%3;
-      if(next===0) delete L.items[id];
-      else L.items[id]={s:next, q: e&&e.q!=null ? e.q : plannedQty(L.n,id)};
+      const w=b.dataset.item, id=b.dataset.id, sec=L[w];
+      const e=sec.items[id], cur=e?e.s:0, next=(cur+1)%3;
+      if(next===0) delete sec.items[id];
+      else sec.items[id]={s:next,q:(e&&e.q!=null)?e.q:plannedQty(L.n,id)};
       save(); render(); }));
     document.querySelectorAll("[data-portion]").forEach(b=>b.addEventListener("click",()=>{
-      const id=b.dataset.portion; if(L.items[id]) L.items[id].q=parseFloat(b.dataset.q);
-      save(); render(); }));
+      const sec=L[b.dataset.portion], id=b.dataset.id;
+      if(sec.items[id]) sec.items[id].q=parseFloat(b.dataset.q); save(); render(); }));
     document.querySelectorAll("[data-extra]").forEach(b=>b.addEventListener("click",()=>{
-      L.extra.splice(+b.dataset.extra,1); save(); render(); }));
-    on("#extraAdd","click",()=>{ const v=$("#extraIn").value.trim(); if(!v) return; L.extra.push(v); save(); render(); });
-    on("#extraIn","keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); $("#extraAdd").click(); } });
+      L[b.dataset.extra].extra.splice(+b.dataset.i,1); save(); render(); }));
+    document.querySelectorAll("[data-extraadd]").forEach(b=>b.addEventListener("click",()=>{
+      const w=b.dataset.extraadd, inp=$("#extraIn_"+w), v=inp?inp.value.trim():"";
+      if(!v) return; L[w].extra.push(v); save(); render(); }));
 
     document.querySelectorAll("[data-rate]").forEach(b=>b.addEventListener("click",()=>{
       const f=b.dataset.rate, raw=b.dataset.v, v=isNaN(+raw)?raw:+raw;
       L[f]=(L[f]===v)?null:v; save(); render(); }));
-
     document.querySelectorAll("[data-sym]").forEach(b=>b.addEventListener("click",()=>{
       const s=b.dataset.sym, i=L.symptoms.indexOf(s);
       if(i>=0){ L.symptoms.splice(i,1);
         const j=L.newOnsets.indexOf(s); if(j>=0){ L.newOnsets.splice(j,1); delete S.onsets[s]; } }
-      else { L.symptoms.push(s);
+      else{ L.symptoms.push(s);
         if(!S.onsets[s]){ S.onsets[s]={lap:L.n,ts:L.arrived||now()}; L.newOnsets.push(s);
-          toast(`First ${s.toLowerCase()} — lap ${L.n}`); } }
+          toast(`First ${s.toLowerCase()} — hour ${L.n}`); } }
       save(); render(); }));
     on("#symOther","input",e=>{ L.symOther=e.target.value; save(); });
-
     document.querySelectorAll("[data-toilet]").forEach(b=>b.addEventListener("click",()=>{
       L.toilet=b.dataset.toilet; save(); render(); }));
     document.querySelectorAll("[data-maint]").forEach(b=>b.addEventListener("click",()=>{
       const m=b.dataset.maint, i=L.maint.indexOf(m);
       if(i>=0) L.maint.splice(i,1); else L.maint.push(m); save(); render(); }));
     document.querySelectorAll("[data-swell]").forEach(b=>b.addEventListener("click",()=>{
-      L.swell=b.dataset.swell; save(); render();
-      if(b.dataset.swell==="yes") showFlags(true); }));
+      L.swell=b.dataset.swell; save(); render(); if(b.dataset.swell==="yes") showFlags(true); }));
     on("#notes","input",e=>{ L.notes=e.target.value; save(); });
   }
 
   on("#btnFlags","click",()=>showFlags(false));
-
   document.querySelectorAll("[data-open]").forEach(b=>b.addEventListener("click",()=>{
-    S.editN=+b.dataset.open; S.tab="lap"; save(); render();
-    toast("Editing lap "+S.editN);
-  }));
+    S.editN=+b.dataset.open; S.tab="lap"; save(); render(); toast("Editing hour "+S.editN); }));
 
   on("#dl","click",()=>downloadCSV(`lap-log-${new Date().toISOString().slice(0,10)}.csv`));
   on("#cp","click",async()=>{ try{ await navigator.clipboard.writeText(buildCSV()); toast("CSV copied"); }
@@ -1001,57 +1045,57 @@ function bind(){
     }catch(e){ toast("Sharing unavailable — use Download"); } });
   on("#syncNow","click",()=>queueSync(true));
   on("#backupNow","click",()=>snapshot(S.laps.length?S.laps[S.laps.length-1].n:0,true));
-  on("#recOpfs","click",async()=>{
-    const out=$("#recMsg"), txt=await opfsRead();
-    if(!txt){ out.innerHTML=`<div class="err">Nothing in the device store.</div>`; return; }
-    if(!confirm("Replace everything with the device store copy?")) return;
-    try{ const n=importCSV(txt); render(); toast(n+" laps recovered"); }
+
+  const doRecover=(txt,label)=>{
+    const out=$("#recMsg");
+    if(!confirm(`Replace everything in this app with ${label}?`)) return;
+    try{ const n=importCSV(txt); render(); toast(n+" hours recovered"); }
     catch(e){ out.innerHTML=`<div class="err">${String(e.message)}</div>`; }
+  };
+  on("#recSheet","click",async()=>{
+    const out=$("#recMsg"); out.innerHTML=`<p class="hint">Downloading from the sheet…</p>`;
+    try{ const txt=await fetchFromSheet(); doRecover(txt,"the copy in the sheet"); }
+    catch(e){ out.innerHTML=`<div class="err">${String(e.message||e).replace(/</g,"&lt;")}</div>`; }
+  });
+  on("#recOpfs","click",async()=>{
+    const out=$("#recMsg"); const txt=await opfsRead();
+    if(!txt){ out.innerHTML=`<div class="err">Nothing in the device store.</div>`; return; }
+    doRecover(txt,"the device store copy");
   });
   on("#recFile","click",()=>$("#fileIn").click());
-  on("#fileIn","change",async e=>{
-    const f=e.target.files[0]; if(!f) return; const out=$("#recMsg");
-    try{ const txt=await f.text();
-      if(!confirm(`Replace everything with ${f.name}?`)) return;
-      const n=importCSV(txt); render(); toast(n+" laps recovered");
-    }catch(err){ out.innerHTML=`<div class="err">${String(err.message)}</div>`; }
-  });
+  on("#fileIn","change",async e=>{ const f=e.target.files[0]; if(!f) return;
+    try{ doRecover(await f.text(),f.name); }
+    catch(err){ $("#recMsg").innerHTML=`<div class="err">${String(err.message)}</div>`; } });
+
   on("#wipe","click",()=>{
-    if(!confirm("Erase every lap? This cannot be undone.")) return;
+    if(!confirm("Erase every hour? This cannot be undone.")) return;
     if(!confirm("Really erase? Export first if you haven't.")) return;
-    S.laps=[]; S.cur=null; S.editN=null; S.onsets={}; S.nextLap=1; S.raceStart=null;
-    save(); render(); toast("Erased");
-  });
+    S.laps=[]; S.cur=null; S.editN=null; S.onsets={}; S.nextLap=1;
+    S.raceStart=null; S.raceEnd=null; S.endNote=""; save(); render(); toast("Erased"); });
 
   document.querySelectorAll("[data-theme-set]").forEach(b=>b.addEventListener("click",()=>{
     S.settings.theme=b.dataset.themeSet; save(); applyTheme(); render(); }));
   document.querySelectorAll("[data-snap]").forEach(b=>b.addEventListener("click",()=>{
     S.settings.snapEvery=+b.dataset.snap; save(); render(); }));
-  on("#sStart","change",e=>{
-    const v=e.target.value; if(!v) return;
+  on("#sStart","change",e=>{ const v=e.target.value; if(!v) return;
     const [h,m]=v.split(":").map(Number);
     const d=new Date(S.raceStart||now()); d.setHours(h,m,0,0);
     S.raceStart=d.getTime(); S.settings.startTime=v; save(); render();
-    toast("Start set to "+v+" — all bells shifted");
-  });
+    toast("Start set to "+v+" — all bells shifted"); });
   on("#sLaps","change",e=>{ S.settings.targetLaps=parseInt(e.target.value,10)||48; save(); });
   document.querySelectorAll("[data-p]").forEach(inp=>inp.addEventListener("change",()=>{
     const p=S.products[+inp.dataset.p]; p[inp.dataset.k]=parseFloat(inp.value)||0;
-    if(p.unset&&(p.kcal||p.carb||p.na)){ delete p.unset; p.note="edited"; }
-    save(); }));
+    if(p.unset&&(p.kcal||p.carb||p.na)){ delete p.unset; p.note="edited"; } save(); }));
 
-  on("#saveSync","click",()=>{
-    S.settings.syncUrl=$("#sUrl").value.trim();
-    S.settings.syncSecret=$("#sSec").value.trim();
-    save(); syncBadge(); toast("Sync settings saved"); });
+  on("#saveSync","click",()=>{ S.settings.syncUrl=$("#sUrl").value.trim();
+    S.settings.syncSecret=$("#sSec").value.trim(); save(); syncBadge(); toast("Sync settings saved"); });
   on("#mkLink","click",async()=>{
     const u=$("#sUrl").value.trim(), sec=$("#sSec").value.trim();
     if(!u){ $("#syncMsg").innerHTML=`<div class="err">Set the URL first.</div>`; return; }
     const link=location.origin+location.pathname+"?u="+encodeURIComponent(u)+(sec?"&s="+encodeURIComponent(sec):"");
     try{ await navigator.clipboard.writeText(link); toast("Setup link copied"); }catch(e){}
     $("#syncMsg").innerHTML=`<div class="warn">Opening this on another phone sets up sync. It carries the secret — send it somewhere private.</div>
-      <textarea readonly style="min-height:70px;font-size:11px" onclick="this.select()">${link.replace(/</g,"&lt;")}</textarea>`;
-  });
+      <textarea readonly style="min-height:70px;font-size:11px" onclick="this.select()">${link.replace(/</g,"&lt;")}</textarea>`; });
   on("#testSync","click",async()=>{
     S.settings.syncUrl=$("#sUrl").value.trim(); S.settings.syncSecret=$("#sSec").value.trim(); save();
     const out=$("#syncMsg");
@@ -1067,33 +1111,44 @@ function bind(){
       else v=`<div class="err">Unexpected reply — probably an old deployment.</div>`;
       out.innerHTML=v+`<p class="hint">HTTP ${res.status} · ${bytes} bytes · <span class="mono">${txt.replace(/</g,"&lt;").slice(0,140)}</span></p>`;
       S.syncErr=""; save();
-    }catch(err){ out.innerHTML=`<div class="err">Couldn't reach it: ${String(err.message||err).replace(/</g,"&lt;")}</div>
-      <p class="hint">Check the URL ends in <span class="mono">/exec</span>.</p>`; }
-  });
+    }catch(err){ out.innerHTML=`<div class="err">Couldn't reach it: ${String(err.message||err).replace(/</g,"&lt;")}</div>`; } });
   on("#updChk","click",async()=>{
     const out=$("#updMsg");
     if(S.cur||S.laps.length){ if(!confirm("A race is in progress. Continue?")) return; }
     out.innerHTML=`<p class="hint">Checking…</p>`;
-    try{
-      if(!swReg){ out.innerHTML=`<div class="err">No service worker.</div>`; return; }
+    try{ if(!swReg){ out.innerHTML=`<div class="err">No service worker.</div>`; return; }
       await swReg.update();
-      if(swReg.waiting){ out.innerHTML=`<div class="warn">New version ready. <b>Reload twice.</b></div>`; swReg.waiting.postMessage({type:"SKIP_WAITING"}); }
+      if(swReg.waiting){ out.innerHTML=`<div class="warn">New version ready. <b>Reload twice.</b></div>`;
+        swReg.waiting.postMessage({type:"SKIP_WAITING"}); }
       else out.innerHTML=`<p class="hint">Already on ${APP_VERSION}.</p>`;
-    }catch(e){ out.innerHTML=`<div class="err">Couldn't check — probably offline.</div>`; }
-  });
+    }catch(e){ out.innerHTML=`<div class="err">Couldn't check — probably offline.</div>`; } });
 }
 
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
-  if(S.editN!=null && b.dataset.tab!=="lap") S.editN=null;
-  S.tab=b.dataset.tab; save(); render();
-  if(S.tab==="lap"&&S.cur&&S.editN==null) startClock(); else stopClock();
+  if(S.editN!=null&&b.dataset.tab!=="lap") S.editN=null;
+  S.tab=b.dataset.tab; save(); render(); tickClock();
 }));
 
+/* clock: counts down to the next bell while logging, counts up on course */
 let clockTimer=null;
-function startClock(){ stopClock(); clockTimer=setInterval(()=>{
-  const el=$("#ct"); if(!el||!S.cur||S.editN!=null){ stopClock(); return; }
-  el.textContent=mmss(now()-S.cur.arrived); },1000); }
-function stopClock(){ clearInterval(clockTimer); clockTimer=null; }
+function tickClock(){
+  clearInterval(clockTimer); clockTimer=null;
+  if(S.tab!=="lap"||S.editN!=null||S.raceEnd) return;
+  clockTimer=setInterval(paintClock,1000); paintClock();
+}
+function paintClock(){
+  const el=$("#ct"); if(!el){ clearInterval(clockTimer); return; }
+  if(S.cur){
+    const b=whistle(S.cur.n+1);
+    if(b){ const left=b-now();
+      el.textContent=(left<0?"-":"")+mmss(Math.abs(left));
+      el.style.color = left<0 ? "var(--red)" : (left<120000 ? "var(--red)" : "");
+    } else el.textContent=mmss(now()-S.cur.arrived);
+  } else if(S.raceStart){
+    el.textContent=mmss(now()-whistle(S.nextLap));
+  }
+}
+const startClock=tickClock;
 
 function showFlags(fromSwelling){
   const d=document.createElement("div"); d.className="scrim";
@@ -1167,27 +1222,25 @@ window.addEventListener("online",()=>queueSync(false));
 window.addEventListener("beforeunload",e=>{ if(S.cur){ e.preventDefault(); e.returnValue=""; } });
 
 /* ---------- provisioning link ---------- */
-(function provision(){
-  try{
-    const q=new URLSearchParams(location.search);
-    const u=q.get("u"), sec=q.get("s");
-    if(!u&&!sec) return;
-    if(u) S.settings.syncUrl=decodeURIComponent(u);
-    if(sec) S.settings.syncSecret=decodeURIComponent(sec);
-    lsSave(S); idbSave(S);
-    history.replaceState(null,"",location.pathname);
-    S.provisioned=[u?"sheet URL":null,sec?"secret":null].filter(Boolean).join(", ");
-  }catch(e){}
-})();
+(function provision(){ try{
+  const q=new URLSearchParams(location.search);
+  const u=q.get("u"), sec=q.get("s");
+  if(!u&&!sec) return;
+  if(u) S.settings.syncUrl=decodeURIComponent(u);
+  if(sec) S.settings.syncSecret=decodeURIComponent(sec);
+  lsSave(S); idbSave(S);
+  history.replaceState(null,"",location.pathname);
+  S.provisioned=[u?"sheet URL":null,sec?"secret":null].filter(Boolean).join(", ");
+}catch(e){} })();
 
 /* ---------- boot ---------- */
 applyTheme();
 persistOK=lsSave(S);
 render();
 if(S.provisioned){ toast("Set up from link: "+S.provisioned); delete S.provisioned; save(); }
-if(S.cur&&S.editN==null) startClock();
+tickClock();
 syncBadge();
-(function(){ const b=$("#bSave"); b.textContent=persistOK?"saved":"no storage"; b.className="badge "+(persistOK?"on":"off"); })();
+(function(){ const b=$("#bSave"); if(b){ b.textContent=persistOK?"saved":"no storage"; b.className="badge "+(persistOK?"on":"off"); } })();
 </script>
 </body>
 </html>
