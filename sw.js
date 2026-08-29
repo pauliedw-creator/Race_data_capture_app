@@ -2,7 +2,7 @@
    Bump CACHE when you deploy a new version. The app will NOT pick it up
    until someone taps "Check for update" and reloads. That is deliberate:
    a push to the repo must never swap the code mid-race. */
-const CACHE = "lap-log-v3.0.1";
+const CACHE = "lap-log-v3.1.0";
 const ASSETS = [
   "./",
   "./index.html",

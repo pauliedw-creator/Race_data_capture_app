@@ -238,7 +238,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-const APP_VERSION = "3.0.1";
+const APP_VERSION = "3.1.0";
 
 /* ============================================================
    RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx.
@@ -579,8 +579,9 @@ function idleScreen(){
     </div>
     <div class="bigrow">
       ${started?`<button class="big primary wide" id="btnIn">She's in — log hour ${S.nextLap}</button>`
-               :`<button class="big primary wide" id="btnStart">Start race — bell for lap 1</button>`}
+               :`<button class="big primary wide" id="btnStart">Start race — set the bell</button>`}
     </div>
+    ${(!started&&S.startPending)?startPanel():""}
     ${!persistOK?`<div class="err">Storage is off — this looks like a preview. Nothing will survive a reload.</div>`:""}
   </section>
 
@@ -600,6 +601,33 @@ function idleScreen(){
     ${started?`<button class="big wide" id="btnEnd" style="width:100%;margin-top:10px;color:var(--muted)">End race</button>`:""}
   </section>`;
 }
+function startPanel(){
+  const d=S.startDraft||defaultStartTs();
+  return `<section class="card" style="border-color:var(--amber)">
+    <p class="eyebrow">What time did the bell go for lap 1?</p>
+    <input type="time" id="tStart" step="60" value="${hhmm(d)}">
+    <div class="nudge">
+      <button data-sn="-5">−5 min</button>
+      <button data-sn="-1">−1 min</button>
+      <button data-sn="1">+1 min</button>
+      <button data-sn="5">+5 min</button>
+    </div>
+    <div class="nudge">
+      <button data-sdefault="1">Planned (${RACE_META.defaultStart})</button>
+      <button data-snow="1">Now (${hhmm(Date.now())})</button>
+    </div>
+    <p class="legend">Every later bell is this time plus whole hours. You can still correct it in Setup afterwards.</p>
+    <div class="bigrow">
+      <button class="big ghost" id="cancelStart">Cancel</button>
+      <button class="big primary" id="confirmStart">Confirm ${hhmm(d)} start</button>
+    </div>
+  </section>`;
+}
+function defaultStartTs(){
+  const [h,m]=(S.settings.startTime||RACE_META.defaultStart).split(":").map(Number);
+  const d=new Date(); d.setHours(h,m,0,0); return d.getTime();
+}
+
 function endedScreen(c){
   return `
   <section>
@@ -943,9 +971,26 @@ function bind(){
   const L=activeLap();
 
   on("#btnStart","click",()=>{
-    const d=new Date(); d.setSeconds(0,0);
-    S.raceStart=d.getTime(); S.nextLap=1; S.raceEnd=null; save(); render();
-    toast("Race started "+hhmm(S.raceStart)+" — bells on the hour");
+    S.startPending=true; S.startDraft=defaultStartTs(); save(); render();
+  });
+  on("#cancelStart","click",()=>{ S.startPending=false; save(); render(); });
+  on("#tStart","change",e=>{
+    const v=e.target.value; if(!v) return;
+    const [h,m]=v.split(":").map(Number);
+    const d=new Date(S.startDraft||now()); d.setHours(h,m,0,0);
+    S.startDraft=d.getTime(); save(); render();
+  });
+  document.querySelectorAll("[data-sn]").forEach(b=>b.addEventListener("click",()=>{
+    S.startDraft=(S.startDraft||defaultStartTs())+(+b.dataset.sn)*60000; save(); render(); }));
+  document.querySelectorAll("[data-sdefault]").forEach(b=>b.addEventListener("click",()=>{
+    S.startDraft=defaultStartTs(); save(); render(); }));
+  document.querySelectorAll("[data-snow]").forEach(b=>b.addEventListener("click",()=>{
+    const d=new Date(); d.setSeconds(0,0); S.startDraft=d.getTime(); save(); render(); }));
+  on("#confirmStart","click",()=>{
+    S.raceStart=S.startDraft||defaultStartTs();
+    S.startPending=false; S.startDraft=null; S.nextLap=1; S.raceEnd=null;
+    save(); render(); tickClock();
+    toast("Bell 1 at "+hhmm(S.raceStart)+" — every lap on the hour from here");
   });
   on("#btnIn","click",()=>{ S.cur=blankLap(S.nextLap); S.cur.arrived=now(); save(); render(); startClock(); });
   on("#undoIn","click",()=>{ if(confirm("Discard this hour's capture?")){ S.cur=null; save(); render(); } });
