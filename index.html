@@ -227,7 +227,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 
 <script>
 "use strict";
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.2.0";
 
 function applyTheme(){
   const pick = (S && S.settings && S.settings.theme) || "dark";
@@ -892,6 +892,7 @@ function viewSet(){
     <label class="f">Shared secret</label><input type="text" id="sSec" value="${st.syncSecret||""}">
     <button class="big wide" id="saveSync" style="width:100%;margin-top:12px">Save sync settings</button>
     <button class="big wide" id="testSync" style="width:100%;margin-top:8px">Test connection</button>
+    <button class="big wide" id="mkLink" style="width:100%;margin-top:8px">Copy setup link for another phone</button>
     <div id="syncMsg">${S.syncErr?`<div class="err">Last error: ${String(S.syncErr).replace(/</g,"&lt;").slice(0,220)}</div>`:""}${S.lastSync?`<p class="hint">Sheet last replied: <span class="mono">${String(S.lastSync).replace(/</g,"&lt;").slice(0,140)}</span></p>`:""}</div>
     <details style="margin-top:14px">
       <summary>Apps Script to paste in the sheet</summary>
@@ -1117,6 +1118,19 @@ function bind(){
     S.settings.syncSecret=$("#sSec").value.trim();
     save(); syncBadge(); toast("Sync settings saved");
   });
+  on("#mkLink","click",async()=>{
+    const u=$("#sUrl").value.trim(), sec=$("#sSec").value.trim();
+    if(!u){ $("#syncMsg").innerHTML=`<div class="err">Set the URL first.</div>`; return; }
+    const link = location.origin + location.pathname
+      + "?u=" + encodeURIComponent(u)
+      + (sec?"&s="+encodeURIComponent(sec):"")
+      + (S.settings.planText?"&p="+encodeURIComponent(S.settings.planText):"");
+    try{ await navigator.clipboard.writeText(link); toast("Setup link copied"); }
+    catch(e){ /* fall through to showing it */ }
+    $("#syncMsg").innerHTML =
+      `<div class="warn">Opening this link on another phone sets up sync${S.settings.planText?" and loads the plan":""}. It carries the secret — send it somewhere private, not the repo.</div>
+       <textarea readonly style="min-height:70px;font-size:11px" onclick="this.select()">${link.replace(/</g,"&lt;")}</textarea>`;
+  });
   on("#testSync","click",async()=>{
     S.settings.syncUrl=$("#sUrl").value.trim();
     S.settings.syncSecret=$("#sSec").value.trim();
@@ -1269,10 +1283,29 @@ window.addEventListener("online",()=>queueSync(false));
 /* keep the screen honest about unsaved work */
 window.addEventListener("beforeunload",e=>{ if(S.cur){ e.preventDefault(); e.returnValue=""; } });
 
+/* ---- provisioning link: ?u=<script url>&s=<secret> ----
+   Lets a spare phone be set up from one link without the URL or secret
+   ever living in the repo. Consumed once, then wiped from the address
+   bar and from history so it isn't left on screen. */
+(function provision(){
+  try{
+    const q = new URLSearchParams(location.search);
+    const u = q.get("u"), sec = q.get("s"), plan = q.get("p");
+    if(!u && !sec && !plan) return;
+    if(u)    S.settings.syncUrl    = decodeURIComponent(u);
+    if(sec)  S.settings.syncSecret = decodeURIComponent(sec);
+    if(plan){ S.settings.planText  = decodeURIComponent(plan); PLAN = parsePlan(S.settings.planText); }
+    lsSave(S); idbSave(S);
+    history.replaceState(null,"",location.pathname);
+    S.provisioned = [u?"sheet URL":null, sec?"secret":null, plan?"plan":null].filter(Boolean).join(", ");
+  }catch(e){}
+})();
+
 /* boot */
 applyTheme();
 persistOK = lsSave(S);
 render();
+if(S.provisioned){ toast("Set up from link: "+S.provisioned); delete S.provisioned; save(); }
 if(S.cur) startClock();
 syncBadge();
 const b=$("#bSave");
