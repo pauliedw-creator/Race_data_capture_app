@@ -2,9 +2,8 @@
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <meta name="theme-color" content="#12100E">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
@@ -239,7 +238,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-const APP_VERSION = "3.3.0";
+const APP_VERSION = "3.4.0";
 
 /* ============================================================
    RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx.
@@ -369,7 +368,7 @@ const hhmmss=ts=>ts?new Date(ts).toTimeString().slice(0,8):"";
 const round=n=>Math.round(n);
 function mmss(ms){ if(!(ms>=0)) return "––:––"; const s=Math.floor(ms/1000);
   return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); }
-function mins(ms){ return (ms==null||isNaN(ms))?"":(ms/60000).toFixed(1); }
+function mins(ms){ return (ms==null||isNaN(ms))?"":(ms/60000).toFixed(2); }
 function signed(n){ return (n>=0?"+":"−")+Math.abs(round(n)); }
 function toast(m){ const t=$("#toast"); if(!t) return; t.textContent=m; t.classList.add("show");
   clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),1900); }
@@ -483,7 +482,7 @@ function viewLap(){
       <div class="t mono" id="ct">${ed?mmss(campMs(l)):"––:––"}</div>
       <div class="lbl" id="clbl">${ed?"Was in camp":"Until the bell"}</div>
       <div class="sub">${S.raceStart
-        ? `Lap ${l.n} bell ${hhmm(whistle(l.n))} · in at ${hhmm(l.arrived)} · lap ${mins(lapRunMs(l))||"—"} min · next bell ${hhmm(bellNext)}`
+        ? `Lap ${l.n} bell ${hhmm(whistle(l.n))} · in at ${hhmmss(l.arrived)||"—"} · lap ${lapRunMs(l)!=null?mmss(lapRunMs(l)):"—"} · next bell ${hhmm(bellNext)}`
         : "No race start set"}</div>
     </div>
     <div class="bigrow">
@@ -498,7 +497,7 @@ function viewLap(){
 
   <section class="card">
     <p class="eyebrow">Arrival time</p>
-    <input type="time" id="tIn" step="60" value="${hhmm(l.arrived)}">
+    <input type="time" id="tIn" step="1" value="${hhmmss(l.arrived)}">
     ${l.arrived==null
       ? `<div class="err">Not recorded. Type the time she came in — lap and camp times depend on it.</div>`
       : (campMs(l)!=null && campMs(l)<0
@@ -610,18 +609,38 @@ function idleScreen(){
 
   <section>
     <button class="big wide" id="btnFlags" style="width:100%;color:var(--red);border-color:var(--alert-line)">Red flags — when to stop</button>
-    ${started?`<button class="big wide" id="btnEnd" style="width:100%;margin-top:10px;color:var(--muted)">End race</button>`:""}
+    ${started&&!S.endPending?`<button class="big wide" id="btnEnd" style="width:100%;margin-top:10px;color:var(--muted)">End race</button>`:""}
+  </section>
+  ${S.endPending?endPanel():""}`;
+}
+function endPanel(){
+  const d=S.endDraft||now();
+  const last=prevLap();
+  const dur=S.raceStart?mmss(d-S.raceStart):"";
+  return `<section class="card" style="border-color:var(--amber)">
+    <p class="eyebrow">What time did she actually stop?</p>
+    <input type="time" id="tEnd" step="1" value="${hhmmss(d)}">
+    <p class="legend">Defaults to now. Set it to when she stopped, not when you got round to tapping this.
+    ${last?`Last hour logged was ${last.n}, in at ${hhmmss(last.arrived)}.`:""}</p>
+    <label class="f">How did it end?</label>
+    <textarea id="endNote" placeholder="last lap completed, why she stopped">${(S.endNoteDraft||"").replace(/</g,"&lt;")}</textarea>
+    <div class="bigrow">
+      <button class="big ghost" id="cancelEnd">Cancel</button>
+      <button class="big primary" id="confirmEnd">End at ${hhmmss(d)}</button>
+    </div>
+    ${S.raceStart?`<p class="hint">Total elapsed would be ${Math.floor((d-S.raceStart)/3600000)}h ${Math.floor(((d-S.raceStart)%3600000)/60000)}m.</p>`:""}
   </section>`;
 }
+
 function startPanel(){
   const d=S.startDraft||defaultStartTs();
   return `<section class="card" style="border-color:var(--amber)">
     <p class="eyebrow">What time did the bell go for lap 1?</p>
-    <input type="time" id="tStart" step="60" value="${hhmm(d)}">
+    <input type="time" id="tStart" step="1" value="${hhmmss(d)}">
     <p class="legend">Every later bell is this time plus whole hours. You can still correct it in Setup afterwards.</p>
     <div class="bigrow">
       <button class="big ghost" id="cancelStart">Cancel</button>
-      <button class="big primary" id="confirmStart">Confirm ${hhmm(d)} start</button>
+      <button class="big primary" id="confirmStart">Confirm ${hhmmss(d)} start</button>
     </div>
   </section>`;
 }
@@ -636,7 +655,7 @@ function endedScreen(c){
     <div class="clock">
       <div class="t mono">${c.n}</div>
       <div class="lbl">Hours completed</div>
-      <div class="sub">${(c.n*S.settings.lapMiles).toFixed(1)} miles · ${hhmm(S.raceStart)} to ${hhmm(S.raceEnd)}</div>
+      <div class="sub">${(c.n*S.settings.lapMiles).toFixed(1)} miles · ${hhmmss(S.raceStart)} to ${hhmmss(S.raceEnd)}${S.raceStart&&S.raceEnd?` · ${Math.floor((S.raceEnd-S.raceStart)/3600000)}h ${Math.floor(((S.raceEnd-S.raceStart)%3600000)/60000)}m`:""}</div>
     </div>
     ${S.endNote?`<div class="card" style="margin-top:12px"><p class="eyebrow">How it ended</p><p>${String(S.endNote).replace(/</g,"&lt;")}</p></div>`:""}
     <div class="bigrow">
@@ -685,7 +704,7 @@ function viewLog(){
       <span class="n mono">${l.n}</span>
       <span class="m">
         <span class="a"><span class="dot" style="background:${gc}"></span>${all.length?all.join(", "):"nothing logged"}</span>
-        <span class="b mono">in ${hhmm(l.arrived)} · lap ${mins(lapRunMs(l))||"—"}${l.temp!=null?" · "+l.temp+"°":""} · ${round(t.kcal)}/${tgt.kcal} kcal <span style="color:${kd>=-30?"var(--green)":"var(--red)"}">${signed(kd)}</span>${l.symptoms.length||l.symOther?" · "+l.symptoms.concat(l.symOther?[l.symOther]:[]).join(", "):""}</span>
+        <span class="b mono">in ${hhmmss(l.arrived)||"—"} · lap ${lapRunMs(l)!=null?mmss(lapRunMs(l)):"—"}${l.temp!=null?" · "+l.temp+"°":""} · ${round(t.kcal)}/${tgt.kcal} kcal <span style="color:${kd>=-30?"var(--green)":"var(--red)"}">${signed(kd)}</span>${l.symptoms.length||l.symOther?" · "+l.symptoms.concat(l.symOther?[l.symOther]:[]).join(", "):""}</span>
       </span>
       <span class="d mono">${mmss(campMs(l))}</span>
     </button>`;}).join("");
@@ -883,7 +902,8 @@ function viewSet(){
     <p class="eyebrow">Race</p>
     <div class="kv"><span>Event</span><b>${RACE_META.name}</b></div>
     <div class="kv"><span>Bell for lap 1</span><b class="mono">${S.raceStart?hhmm(S.raceStart):"not started"}</b></div>
-    <div class="kv"><span>Ended</span><b class="mono">${S.raceEnd?hhmm(S.raceEnd):"no"}</b></div>
+    <div class="kv"><span>Ended</span><b class="mono">${S.raceEnd?hhmmss(S.raceEnd):"no"}</b></div>
+    ${S.raceEnd?`<label class="f">Correct the end time</label><input type="time" id="sEnd" step="1" value="${hhmmss(S.raceEnd)}">`:""}
     <label class="f">Correct the start time</label>
     <input type="time" id="sStart" step="60" value="${S.raceStart?hhmm(S.raceStart):(st.startTime||"10:00")}">
     <p class="legend">Every bell is on the hour from here. Changing this shifts every lap time and camp time.</p>
@@ -962,9 +982,9 @@ function reply(t){
    ============================================================ */
 function setArrival(l,val){
   if(!val){ l.arrived=null; return; }
-  const [h,m]=val.split(":").map(Number);
+  const [h,m,sec]=val.split(":").map(Number);
   const anchor=whistle(l.n)||l.arrived||now();
-  const d=new Date(anchor); d.setHours(h,m,0,0);
+  const d=new Date(anchor); d.setHours(h,m,sec||0,0);
   let ts=d.getTime();
   const w=whistle(l.n);
   if(w && ts<w) ts+=864e5;              // rolled past midnight
@@ -981,8 +1001,8 @@ function bind(){
   on("#cancelStart","click",()=>{ S.startPending=false; save(); render(); });
   on("#tStart","change",e=>{
     const v=e.target.value; if(!v) return;
-    const [h,m]=v.split(":").map(Number);
-    const d=new Date(S.startDraft||now()); d.setHours(h,m,0,0);
+    const [h,m,sec]=v.split(":").map(Number);
+    const d=new Date(S.startDraft||now()); d.setHours(h,m,sec||0,0);
     S.startDraft=d.getTime(); save(); render();
   });
   on("#confirmStart","click",()=>{
@@ -1029,10 +1049,23 @@ function bind(){
 
   on("#btnEnd","click",()=>{
     if(S.cur && !confirm("An hour is open and unsubmitted. End the race anyway?")) return;
-    const note=prompt("How did it end? (last lap completed, why she stopped)","");
-    if(note===null) return;
-    S.raceEnd=now(); S.endNote=note; S.cur=null; save(); snapshot(null,true); queueSync(); render();
-    toast("Race ended — data backed up");
+    S.endPending=true; S.endDraft=now(); S.endNoteDraft=S.endNote||""; save(); render();
+  });
+  on("#cancelEnd","click",()=>{ S.endPending=false; save(); render(); });
+  on("#tEnd","change",e=>{
+    const v=e.target.value; if(!v) return;
+    const [h,m,sec]=v.split(":").map(Number);
+    const d=new Date(S.endDraft||now()); d.setHours(h,m,sec||0,0);
+    let ts=d.getTime();
+    if(S.raceStart && ts<S.raceStart) ts+=864e5;   // ran past midnight
+    S.endDraft=ts; save(); render();
+  });
+  on("#endNote","input",e=>{ S.endNoteDraft=e.target.value; save(); });
+  on("#confirmEnd","click",()=>{
+    S.raceEnd=S.endDraft||now(); S.endNote=S.endNoteDraft||"";
+    S.endPending=false; S.endDraft=null; S.endNoteDraft=""; S.cur=null;
+    save(); snapshot(null,true); queueSync(); render(); stopAllClocks();
+    toast("Race ended "+hhmmss(S.raceEnd)+" — data backed up");
   });
   on("#btnReopen","click",()=>{ if(!confirm("Reopen the race and keep logging?")) return;
     S.raceEnd=null; save(); render(); });
@@ -1040,7 +1073,8 @@ function bind(){
 
   if(L){
     on("#tIn","change",e=>{ setArrival(L,e.target.value); save(); render(); });
-    on("#tIn","input",e=>{ if(e.target.value&&e.target.value.length===5){ setArrival(L,e.target.value); save(); } });
+    on("#tIn","input",e=>{ const v=e.target.value;
+      if(v&&(v.length===5||v.length===8)){ setArrival(L,v); save(); } });
 
     document.querySelectorAll("[data-drink]").forEach(b=>b.addEventListener("click",()=>{
       const sec=L[b.dataset.drink], id=b.dataset.id;
@@ -1139,6 +1173,11 @@ function bind(){
     const d=new Date(S.raceStart||now()); d.setHours(h,m,0,0);
     S.raceStart=d.getTime(); S.settings.startTime=v; save(); render();
     toast("Start set to "+v+" — all bells shifted"); });
+  on("#sEnd","change",e=>{ const v=e.target.value; if(!v) return;
+    const [h,m,sec]=v.split(":").map(Number);
+    const d=new Date(S.raceEnd||now()); d.setHours(h,m,sec||0,0);
+    let ts=d.getTime(); if(S.raceStart&&ts<S.raceStart) ts+=864e5;
+    S.raceEnd=ts; save(); render(); toast("End time set to "+hhmmss(ts)); });
   on("#sLaps","change",e=>{ S.settings.targetLaps=parseInt(e.target.value,10)||48; save(); });
   document.querySelectorAll("[data-p]").forEach(inp=>inp.addEventListener("change",()=>{
     const p=S.products[+inp.dataset.p]; p[inp.dataset.k]=parseFloat(inp.value)||0;
@@ -1188,6 +1227,7 @@ document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()
 
 /* clock: counts down to the next bell while logging, counts up on course */
 let clockTimer=null;
+function stopAllClocks(){ clearInterval(clockTimer); clockTimer=null; }
 function tickClock(){
   clearInterval(clockTimer); clockTimer=null;
   if(S.tab!=="lap"||S.editN!=null||S.raceEnd) return;
