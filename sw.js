@@ -2,7 +2,7 @@
    Bump CACHE when you deploy a new version. The app will NOT pick it up
    until someone taps "Check for update" and reloads. That is deliberate:
    a push to the repo must never swap the code mid-race. */
-const CACHE = "lap-log-v3.4.1";
+const CACHE = "lap-log-v3.4.2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -34,7 +34,7 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
 
   e.respondWith(
-    caches.match(e.request).then(hit => {
+    caches.match(e.request, {ignoreSearch: true}).then(hit => {
       if (hit) return hit;                       // cache first, always
       return fetch(e.request)
         .then(res => {

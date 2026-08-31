@@ -238,7 +238,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-const APP_VERSION = "3.4.1";
+const APP_VERSION = "3.4.2";
 
 /* ============================================================
    RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx.
@@ -267,8 +267,23 @@ function applyTheme(){
 try{ window.matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{ if(S.settings.theme==="auto") applyTheme(); }); }catch(e){}
 
 (async()=>{ try{ if(navigator.storage&&navigator.storage.persist) await navigator.storage.persist(); }catch(e){} })();
-let swReg=null;
-if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>{swReg=r;}).catch(()=>{}); }
+let swReg=null, swWaiting=null, swReloading=false;
+function noteWaiting(w){ if(!w) return; swWaiting=w;
+  const b=document.getElementById("updMsg");
+  if(b) b.innerHTML=`<div class="warn">A new version is installed and waiting. Tap "Check for update" to switch to it.</div>`; }
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./sw.js",{updateViaCache:"none"}).then(r=>{
+    swReg=r;
+    if(r.waiting) noteWaiting(r.waiting);
+    r.addEventListener("updatefound",()=>{
+      const nw=r.installing; if(!nw) return;
+      nw.addEventListener("statechange",()=>{ if(nw.state==="installed"&&navigator.serviceWorker.controller) noteWaiting(nw); });
+    });
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(swReloading) return; swReloading=true; location.reload();
+  });
+}
 
 /* ---------- storage ---------- */
 const KEY="backyard-lap-log-v3";
@@ -897,7 +912,8 @@ function viewSet(){
     <label class="f">Auto-backup a CSV every</label>
     <div class="seg sm">${[1,5,10].map(v=>`<button data-snap="${v}" aria-pressed="${(st.snapEvery||1)===v}">${v===1?"hour":v+" hours"}</button>`).join("")}</div>
     <button class="big wide" id="updChk" style="width:100%;margin-top:14px">Check for update</button>
-    <p class="hint">The app never updates itself. Don't check for updates during the race.</p>
+    <button class="big wide" id="forceUpd" style="width:100%;margin-top:8px;color:var(--muted)">Force reload from network</button>
+    <p class="hint">The app never updates itself. Don't do either of these during the race. Force reload clears the cached app and re-downloads it — logged data is untouched.</p>
     <div id="updMsg"></div>
   </section>
 
@@ -1215,12 +1231,34 @@ function bind(){
     const out=$("#updMsg");
     if(S.cur||S.laps.length){ if(!confirm("A race is in progress. Continue?")) return; }
     out.innerHTML=`<p class="hint">Checking…</p>`;
-    try{ if(!swReg){ out.innerHTML=`<div class="err">No service worker.</div>`; return; }
+    if(!swReg){ out.innerHTML=`<div class="err">No service worker registered.</div>`; return; }
+    const activate=w=>{ out.innerHTML=`<div class="warn">New version found — switching now.</div>`;
+      w.postMessage({type:"SKIP_WAITING"}); setTimeout(()=>{ if(!swReloading){ swReloading=true; location.reload(); } },800); };
+    try{
+      if(swReg.waiting) return activate(swReg.waiting);
       await swReg.update();
-      if(swReg.waiting){ out.innerHTML=`<div class="warn">New version ready. <b>Reload twice.</b></div>`;
-        swReg.waiting.postMessage({type:"SKIP_WAITING"}); }
-      else out.innerHTML=`<p class="hint">Already on ${APP_VERSION}.</p>`;
+      // update() resolves when the CHECK finishes, not the install. Wait it out.
+      const found=await new Promise(res=>{
+        let done=false;
+        const finish=v=>{ if(!done){ done=true; res(v); } };
+        const t=setInterval(()=>{ if(swReg.waiting){ clearInterval(t); finish(swReg.waiting); } },300);
+        setTimeout(()=>{ clearInterval(t); finish(swReg.waiting||null); },12000);
+      });
+      if(found) activate(found);
+      else out.innerHTML=`<p class="hint">No new version found. Running ${APP_VERSION}.</p>
+        <p class="hint">GitHub Pages can serve a stale copy for a few minutes after a push. If you know it's deployed, use Force reload below.</p>`;
     }catch(e){ out.innerHTML=`<div class="err">Couldn't check — probably offline.</div>`; } });
+  on("#forceUpd","click",async()=>{
+    const out=$("#updMsg");
+    if(S.laps.length && !confirm(`This clears the cached app and reloads from the network. Your ${S.laps.length} logged hours stay, but export a CSV first if you haven't.`)) return;
+    out.innerHTML=`<p class="hint">Clearing cache…</p>`;
+    try{
+      if("caches" in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister()));
+      swReloading=true;
+      location.replace(location.pathname+"?fresh="+Date.now());
+    }catch(e){ out.innerHTML=`<div class="err">${String(e.message||e)}</div>`; } });
 }
 
 document.querySelectorAll("nav button").forEach(b=>b.addEventListener("click",()=>{
