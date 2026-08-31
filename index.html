@@ -238,7 +238,7 @@ pre{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:
 <div class="toast" id="toast"></div>
 <script>
 "use strict";
-const APP_VERSION = "3.4.0";
+const APP_VERSION = "3.4.1";
 
 /* ============================================================
    RACE PLAN — compiled from Backyard_Ultra_Hardwick_Sep_2026_v3.xlsx.
@@ -258,8 +258,11 @@ function applyTheme(){
   const pick=(S&&S.settings&&S.settings.theme)||"dark";
   const eff=pick==="auto"?(window.matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):pick;
   document.documentElement.setAttribute("data-theme",eff);
+  // Status bar stays dark in both themes. Chrome tints it with theme-color but
+  // keeps its light icon set, so a pale value makes the clock and battery
+  // invisible rather than hiding the bar.
   const m=document.querySelector('meta[name="theme-color"]');
-  if(m) m.setAttribute("content",eff==="light"?"#F5F2EC":"#12100E");
+  if(m) m.setAttribute("content","#12100E");
 }
 try{ window.matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{ if(S.settings.theme==="auto") applyTheme(); }); }catch(e){}
 
